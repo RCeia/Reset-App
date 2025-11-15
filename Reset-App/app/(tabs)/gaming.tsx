@@ -8,14 +8,14 @@ const { width, height } = Dimensions.get('window');
 // --- Constants ---
 const BIRD_SIZE = 25;
 const BIRD_X_POSITION = width * 0.22; // Bird's horizontal position
-const OBSTACLE_WIDTH = 50;
-const OBSTACLE_GAP = 170;
-const OBSTACLE_SPEED = 2.2; // Speed of pipes moving left
-const OBSTACLE_SPACING = width * 0.7; // Distance between pipes
+const OBSTACLE_WIDTH = 45;
+const OBSTACLE_GAP = 1650;
+const OBSTACLE_SPEED = 2.28; // Speed of pipes moving left
+const OBSTACLE_SPACING = width * 0.73; // Distance between pipes
 
 // --- Physics Constants ---
-const GRAVITY = 0.23; // Acceleration (pixels per frame per frame)
-const JUMP_VELOCITY = -5.5; // Initial upward velocity on tap
+const GRAVITY = 0.25; // Acceleration (pixels per frame per frame)
+const JUMP_VELOCITY = -5.9; // Initial upward velocity on tap
 
 
 /**
