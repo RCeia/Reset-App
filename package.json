@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "expo-image-picker": "^17.0.8",
+    "expo-secure-store": "^15.0.7",
+    "socket.io-client": "^4.8.1"
+  }
+}
