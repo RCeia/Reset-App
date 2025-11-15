@@ -11,12 +11,19 @@ export default function RegisterScreen() {
   const colorScheme = useColorScheme();
   const themeColors = Colors[colorScheme ?? 'light'];
 
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   const handleRegister = async () => {
-    if (!email || !password) {
+    if (!username || !email || !password || !confirmPassword) {
       Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      Alert.alert('Error', 'Passwords do not match');
       return;
     }
 
@@ -24,7 +31,7 @@ export default function RegisterScreen() {
       const res = await fetch(`${BASE_URL}/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ username, email, password }),
       });
 
       if (!res.ok) {
@@ -43,6 +50,15 @@ export default function RegisterScreen() {
   return (
     <View style={[styles.container, { backgroundColor: themeColors.background }]}>
       <Text style={[styles.title, { color: themeColors.text }]}>Register</Text>
+      
+      <TextInput
+        placeholder="Username"
+        value={username}
+        onChangeText={setUsername}
+        style={styles.input}
+        autoCapitalize="none"
+      />
+
       <TextInput
         placeholder="Email"
         value={email}
@@ -50,6 +66,7 @@ export default function RegisterScreen() {
         style={styles.input}
         autoCapitalize="none"
       />
+
       <TextInput
         placeholder="Password"
         value={password}
@@ -57,7 +74,17 @@ export default function RegisterScreen() {
         style={styles.input}
         secureTextEntry
       />
+
+      <TextInput
+        placeholder="Confirm Password"
+        value={confirmPassword}
+        onChangeText={setConfirmPassword}
+        style={styles.input}
+        secureTextEntry
+      />
+
       <Button title="Register" onPress={handleRegister} />
+
       <Text
         style={[styles.link, { color: themeColors.tint }]}
         onPress={() => router.push('/login')}
