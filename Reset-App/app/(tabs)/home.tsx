@@ -13,15 +13,9 @@ import {
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 
-// --- Corrected Import Strategy ---
-// Import 'documentDirectory' as a named constant.
-// Import the functions as named exports.
-import {
-  documentDirectory,
-  copyAsync,
-  getContentUriAsync,
-} from "expo-file-system";
-// --- End Corrected Import Strategy ---
+// Replace your current File import
+import { copyAsync, documentDirectory, getContentUriAsync } from "expo-file-system/legacy";
+
 
 import * as IntentLauncher from "expo-intent-launcher";
 import * as WebBrowser from "expo-web-browser";
@@ -68,40 +62,42 @@ interface PdfButtonProps {
 }
 
 const PdfButton = ({ title, pdfUri }: PdfButtonProps) => {
-  const openLocalPdf = async () => {
-    try {
-      if (Platform.OS === "web") {
-        window.open(pdfUri);
-      } else {
-        // Use the named 'documentDirectory' constant
-        const fileUri = `${documentDirectory}${title.replace(
-          / /g,
-          "_"
-        )}.pdf`;
+    const openLocalPdf = async () => {
+      try {
+        if (Platform.OS === "web") {
+          window.open(pdfUri);
+          return;
+        }
 
-        // Use the named imports for functions
-        await copyAsync({ from: pdfUri, to: fileUri });
-        let contentUri: string = fileUri;
+        const fileUri = `${documentDirectory}${title.replace(/ /g, "_")}.pdf`;
+
+        // Correct modern API
+        await copyAsync({
+          from: pdfUri,
+          to: fileUri,
+        });
+
+
+
+        let contentUri = fileUri;
 
         if (Platform.OS === "android") {
           contentUri = await getContentUriAsync(fileUri);
-          await IntentLauncher.startActivityAsync(
-            "android.intent.action.VIEW",
-            {
-              data: contentUri,
-              flags: 1,
-              type: "application/pdf",
-            }
-          );
+          await IntentLauncher.startActivityAsync("android.intent.action.VIEW", {
+            data: contentUri,
+            flags: 1,
+            type: "application/pdf",
+          });
         } else {
           await WebBrowser.openBrowserAsync(contentUri);
         }
+      } catch (error) {
+        console.error("Error opening PDF:", error);
+        Alert.alert("Erro", "Não foi possível abrir o PDF.");
       }
-    } catch (error) {
-      console.error("Error opening PDF:", error); // Log the error
-      Alert.alert("Erro", "Não foi possível abrir o PDF.");
-    }
-  };
+    };
+
+
 
   return (
     <TouchableOpacity style={styles.button} onPress={openLocalPdf}>
@@ -340,10 +336,10 @@ const SpecialDocumentButtons = () => {
     const loadPdfs = async () => {
       try {
         const doc1 = Asset.fromModule(
-          require("@assets/pdfs/documento1.pdf")
+          require("../../assets/pdfs/documento1.pdf")
         );
         const doc2 = Asset.fromModule(
-          require("@assets/pdfs/documento2.pdf")
+          require("../../assets/pdfs/documento2.pdf")
         );
 
         await doc1.downloadAsync();
@@ -436,7 +432,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 10,
     paddingVertical: 5,
-    justifyContent: "center",
+    justifyContent: "flex-start",
   },
   eventText: { color: "#fff", fontWeight: "bold", fontSize: 12 },
   timeIndicator: {
