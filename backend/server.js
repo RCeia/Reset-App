@@ -252,6 +252,121 @@ io.on('connection', (socket) => {
     console.log('socket disconnected', socket.id);
   });
 });
+// ---------- CHAT/MESSAGES SCHEMA ----------
+const ChatSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  allowedUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], // who can access
+});
+const Chat = mongoose.model('Chat', ChatSchema);
+
+const MessageSchema = new mongoose.Schema({
+  chat: { type: mongoose.Schema.Types.ObjectId, ref: 'Chat', required: true },
+  sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  text: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now },
+});
+const Message = mongoose.model('Message', MessageSchema);
+
+// ---------- CHAT ENDPOINTS ----------
+// Get chats for user
+app.get('/chats', authenticate, async (req, res) => {
+  try {
+    const chats = await Chat.find({ allowedUsers: req.userId }).lean();
+    res.json({ success: true, chats });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false });
+  }
+});
+
+// Get messages for a chat
+app.get('/chats/:id/messages', authenticate, async (req, res) => {
+  try {
+    const chat = await Chat.findById(req.params.id);
+    if (!chat) return res.status(404).json({ success: false, error: 'Chat not found' });
+
+    if (!chat.allowedUsers.includes(req.userId))
+      return res.status(403).json({ success: false, error: 'Access denied' });
+
+    const messages = await Message.find({ chat: chat._id })
+      .sort({ createdAt: 1 })
+      .populate('sender', 'username avatar')
+      .lean();
+
+    const mapped = messages.map(m => ({
+      id: m._id,
+      chatId: m.chat,
+      text: m.text,
+      createdAt: m.createdAt,
+      sender: {
+        username: m.sender.username,
+        avatar: m.sender.avatar ? `${req.protocol}://${req.get('host')}/uploads/${path.basename(m.sender.avatar)}` : '',
+      },
+    }));
+
+    res.json({ success: true, messages: mapped });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false });
+  }
+});
+
+// ---------- SOCKET.IO CHAT ----------
+io.on('connection', (socket) => {
+  console.log('socket connected', socket.id);
+
+  // Join a chat room
+  socket.on('join_chat', async ({ chatId, userId }) => {
+    try {
+      const chat = await Chat.findById(chatId);
+      if (!chat) return;
+
+      if (!chat.allowedUsers.includes(userId)) return;
+
+      socket.join(chatId);
+      console.log(`Socket ${socket.id} joined chat ${chatId}`);
+    } catch (err) {
+      console.error(err);
+    }
+  });
+
+  // Send a message
+  socket.on('send_message', async ({ chatId, userId, text }) => {
+    try {
+      const chat = await Chat.findById(chatId);
+      if (!chat || !chat.allowedUsers.includes(userId)) return;
+
+      const message = new Message({ chat: chatId, sender: userId, text });
+      await message.save();
+
+      const populated = await message.populate('sender', 'username avatar');
+
+      const serverBase = "http://192.168.1.132:3000";
+
+      const payload = {
+        id: message._id,
+        chatId,
+        text: message.text,
+        createdAt: message.createdAt,
+        sender: {
+          username: populated.sender.username,
+          avatar: populated.sender.avatar
+            ? `${serverBase}/uploads/${path.basename(populated.sender.avatar)}`
+            : '',
+        },
+      };
+
+
+      io.to(chatId).emit('new_message', payload);
+    } catch (err) {
+      console.error(err);
+    }
+  });
+
+  socket.on('disconnect', () => {
+    console.log('socket disconnected', socket.id);
+  });
+});
 
 // start server
 const PORT = 3000;
