@@ -41,7 +41,7 @@ const getCurrentDateTime = (): DateObj => {
 };
 
 const inicio: DateObj = { day: 7, month: 2, year: 2025, hours: 9, minutes: 0 };
-const fim: DateObj = { day: 20, month: 2, year: 2025, hours: 21, minutes: 59 };
+const fim: DateObj = { day: 3, month: 3, year: 2026, hours: 21, minutes: 59 };
 
 const isSpecialTime = (): boolean => {
   const current = getCurrentDateTime();
@@ -54,6 +54,49 @@ const isSpecialTime = (): boolean => {
 
   return currentMin >= inicioMin && currentMin <= fimMin;
 };
+
+const CountdownTimer = ({ endTime }: { endTime: DateObj }) => {
+  const [timeLeft, setTimeLeft] = useState<number>(0); // in milliseconds
+
+  const calculateTimeLeft = () => {
+    const now = new Date();
+    const end = new Date(
+      endTime.year,
+      endTime.month - 1,
+      endTime.day,
+      endTime.hours,
+      endTime.minutes
+    );
+    return Math.max(end.getTime() - now.getTime(), 0);
+  };
+
+  useEffect(() => {
+    setTimeLeft(calculateTimeLeft());
+
+    const interval = setInterval(() => {
+      setTimeLeft(calculateTimeLeft());
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [endTime]);
+
+  if (timeLeft === 0) {
+    return <Text style={styles.finishedText}>A competição acabou!</Text>;
+  }
+
+  const hours = Math.floor(timeLeft / (1000 * 60 * 60));
+  const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+  const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+
+  return (
+    <Text style={styles.timerText}>
+      {hours.toString().padStart(2, "0")}:
+      {minutes.toString().padStart(2, "0")}:
+      {seconds.toString().padStart(2, "0")}
+    </Text>
+  );
+};
+
 
 // Define props interface for PdfButton
 interface PdfButtonProps {
@@ -381,6 +424,7 @@ export default function HomeScreen() {
       <Text style={[styles.title, { color: themeColors.text }]}>
         Informações
       </Text>
+      <CountdownTimer endTime={fim} />
       <EventSchedule />
       <SurvivalGuideButton />
       <SpecialDocumentButtons />
@@ -459,4 +503,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#888",
   },
+    timerText: {
+    fontSize: 20,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginVertical: 10,
+  },
+  finishedText: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "red",
+    textAlign: "center",
+    marginVertical: 10,
+  },
+
 });
