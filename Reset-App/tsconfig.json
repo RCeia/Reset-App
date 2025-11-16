@@ -6,7 +6,8 @@
       "@/*": [
         "./*"
       ]
-    }
+    },
+    "types": ["expo", "expo-file-system"]
   },
   "include": [
     "**/*.ts",

@@ -1,7 +1,12 @@
 {
   "dependencies": {
     "expo-image-picker": "^17.0.8",
+    "expo-intent-launcher": "^13.0.7",
     "expo-secure-store": "^15.0.7",
     "socket.io-client": "^4.8.1"
+  },
+  "devDependencies": {
+    "@types/react": "~19.1.10",
+    "typescript": "~5.9.2"
   }
 }

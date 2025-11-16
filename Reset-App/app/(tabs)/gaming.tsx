@@ -9,7 +9,7 @@ const { width, height } = Dimensions.get('window');
 const BIRD_SIZE = 25;
 const BIRD_X_POSITION = width * 0.22; // Bird's horizontal position
 const OBSTACLE_WIDTH = 45;
-const OBSTACLE_GAP = 1650;
+const OBSTACLE_GAP = 165;
 const OBSTACLE_SPEED = 2.28; // Speed of pipes moving left
 const OBSTACLE_SPACING = width * 0.73; // Distance between pipes
 
