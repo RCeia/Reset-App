@@ -142,16 +142,26 @@ app.post('/upload-avatar', authenticate, upload.single('avatar'), async (req, re
 // ---------- POSTS endpoints ----------
 app.get('/posts', async (req, res) => {
   try {
-    // return latest first
-    const posts = await Post.find().sort({ createdAt: -1 }).limit(100).lean();
-    // convert imagePath to public URL
+    const posts = await Post.find()
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .populate('author', 'username avatar') // <--- populate username & avatar
+      .lean();
+
     const mapped = posts.map(p => ({
       id: p._id,
       imageUrl: `${req.protocol}://${req.get('host')}/uploads/${path.basename(p.imagePath)}`,
       likes: p.likes,
       comments: p.comments,
       createdAt: p.createdAt,
+      author: {
+        username: p.author?.username || 'Unknown',
+        avatar: p.author?.avatar
+          ? `${req.protocol}://${req.get('host')}/uploads/${path.basename(p.author.avatar)}`
+          : '',
+      },
     }));
+
     res.json({ success: true, posts: mapped });
   } catch (err) {
     console.error(err);
@@ -159,22 +169,35 @@ app.get('/posts', async (req, res) => {
   }
 });
 
-// create a post (image upload). requires auth
+
 app.post('/posts', authenticate, upload.single('image'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ success: false, error: 'Image required' });
+
     const post = new Post({
       imagePath: req.file.path,
       author: req.userId,
     });
+
     await post.save();
 
+    // populate author info
+    const populatedPost = await Post.findById(post._id)
+      .populate('author', 'username avatar')
+      .lean();
+
     const payload = {
-      id: post._id,
-      imageUrl: `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`,
-      likes: post.likes,
-      comments: post.comments,
-      createdAt: post.createdAt,
+      id: populatedPost._id,
+      imageUrl: `${req.protocol}://${req.get('host')}/uploads/${path.basename(populatedPost.imagePath)}`,
+      likes: populatedPost.likes,
+      comments: populatedPost.comments,
+      createdAt: populatedPost.createdAt,
+      author: {
+        username: populatedPost.author?.username || 'Unknown',
+        avatar: populatedPost.author?.avatar
+          ? `${req.protocol}://${req.get('host')}/uploads/${path.basename(populatedPost.author.avatar)}`
+          : '',
+      },
     };
 
     // broadcast to all connected clients
