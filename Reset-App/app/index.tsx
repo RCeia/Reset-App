@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 
-const BASE_URL = 'http://192.168.1.132:3000'; // your machine IP
+import { BASE_URL } from '@/constants/Config';
 
 export default function RegisterScreen() {
   const router = useRouter();

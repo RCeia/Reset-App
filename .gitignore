@@ -1,1 +1,13 @@
-node_modules
+# Dependências (Nunca enviar isto!)
+node_modules/
+backend/node_modules/
+Reset-App/node_modules/
+
+# Variáveis de Ambiente (Segurança)
+.env
+backend/.env
+
+# Build outputs
+.expo/
+dist/
+build/

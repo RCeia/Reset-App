@@ -2,6 +2,7 @@
   "dependencies": {
     "expo-image-picker": "^17.0.8",
     "expo-intent-launcher": "^13.0.7",
+    "expo-notifications": "~0.32.13",
     "expo-secure-store": "^15.0.7",
     "socket.io-client": "^4.8.1"
   },

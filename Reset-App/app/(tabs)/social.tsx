@@ -17,7 +17,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import * as SecureStore from 'expo-secure-store';
 import io from 'socket.io-client';
 
-const BASE_URL = 'http://192.168.1.132:3000'; // your machine IP
+import { BASE_URL } from '@/constants/Config';
 
 interface Post {
   id: string;

@@ -18,9 +18,9 @@ import * as SecureStore from 'expo-secure-store';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import AuthProvider, { AuthContext } from '@/app/context/AuthContext';
-import DefaultAvatar from '@/assets/images/defaultAvatar.jpg';
+import DefaultAvatar from '@/assets/images/defaultavatar.jpg';
 
-const BASE_URL = 'http://192.168.1.132:3000';
+import { BASE_URL } from '@/constants/Config';
 
 export default function AccountScreen() {
   const colorScheme = useColorScheme();

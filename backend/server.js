@@ -6,9 +6,40 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
+const fs = require('fs'); // Necessário para ler o ficheiro
 const http = require('http');
 const { Server } = require('socket.io');
+
+// ==========================================================
+// 1. LER O IP DIRETAMENTE DO CONFIG.TS DO FRONTEND
+// ==========================================================
+let SERVER_IP = '127.0.0.1'; // Fallback caso não encontre
+const PORT = 3000;
+
+try {
+  // Ajuste este caminho se as pastas não estiverem lado a lado
+  // Assume estrutura:
+  // 📁 /Projetos
+  //    ├── 📁 Reset-App (Frontend)
+  //    │     └── constants/Config.ts
+  //    └── 📁 backend (Onde está este ficheiro)
+  const configPath = path.join(__dirname, '../Reset-App/constants/Config.ts');
+  
+  if (fs.existsSync(configPath)) {
+    const fileContent = fs.readFileSync(configPath, 'utf8');
+    // Procura por: const SERVER_IP = "192.168.X.X";
+    const match = fileContent.match(/SERVER_IP\s*=\s*["']([^"']+)["']/);
+    if (match && match[1]) {
+      SERVER_IP = match[1];
+      console.log(`✅ Configuração carregada do Frontend: IP ${SERVER_IP}`);
+    }
+  } else {
+    console.warn(`⚠️ Aviso: Não encontrei o ficheiro em: ${configPath}`);
+  }
+} catch (error) {
+  console.error("Erro ao ler Config.ts:", error.message);
+}
+// ==========================================================
 
 const app = express();
 const server = http.createServer(app);
@@ -27,12 +58,12 @@ app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Mongo
-mongoose.connect('mongodb://localhost:27017/myappdb', {
+mongoose.connect('mongodb://127.0.0.1:27017/myappdb', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
 
-// User schema
+// Schemas (Mantidos iguais)
 const UserSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
@@ -41,9 +72,8 @@ const UserSchema = new mongoose.Schema({
 });
 const User = mongoose.model('User', UserSchema);
 
-// Post schema
 const PostSchema = new mongoose.Schema({
-  imagePath: { type: String, required: true }, // saved file path on server
+  imagePath: { type: String, required: true }, 
   likes: { type: Number, default: 0 },
   comments: { type: [String], default: [] },
   author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
@@ -51,7 +81,7 @@ const PostSchema = new mongoose.Schema({
 });
 const Post = mongoose.model('Post', PostSchema);
 
-// auth middleware
+// Auth middleware
 const authenticate = (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader) return res.status(401).json({ success: false });
@@ -64,7 +94,7 @@ const authenticate = (req, res, next) => {
   });
 };
 
-// multer config
+// Multer config
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const uploadDir = path.join(__dirname, 'uploads');
@@ -78,7 +108,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// ---------- AUTH endpoints (register/login/me/upload-avatar) ----------
+// ---------- AUTH endpoints ----------
 app.post('/register', async (req, res) => {
   try {
     const { email, password, username } = req.body;
@@ -145,7 +175,7 @@ app.get('/posts', async (req, res) => {
     const posts = await Post.find()
       .sort({ createdAt: -1 })
       .limit(100)
-      .populate('author', 'username avatar') // <--- populate username & avatar
+      .populate('author', 'username avatar')
       .lean();
 
     const mapped = posts.map(p => ({
@@ -169,7 +199,6 @@ app.get('/posts', async (req, res) => {
   }
 });
 
-
 app.post('/posts', authenticate, upload.single('image'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ success: false, error: 'Image required' });
@@ -181,7 +210,6 @@ app.post('/posts', authenticate, upload.single('image'), async (req, res) => {
 
     await post.save();
 
-    // populate author info
     const populatedPost = await Post.findById(post._id)
       .populate('author', 'username avatar')
       .lean();
@@ -200,9 +228,7 @@ app.post('/posts', authenticate, upload.single('image'), async (req, res) => {
       },
     };
 
-    // broadcast to all connected clients
     io.emit('new_post', payload);
-
     res.json({ success: true, post: payload });
   } catch (err) {
     console.error(err);
@@ -210,7 +236,6 @@ app.post('/posts', authenticate, upload.single('image'), async (req, res) => {
   }
 });
 
-// like a post
 app.post('/posts/:id/like', authenticate, async (req, res) => {
   try {
     const post = await Post.findById(req.params.id);
@@ -219,7 +244,7 @@ app.post('/posts/:id/like', authenticate, async (req, res) => {
     await post.save();
 
     const updated = { id: post._id, likes: post.likes };
-    io.emit('post_liked', updated); // real-time update
+    io.emit('post_liked', updated);
     res.json({ success: true, likes: post.likes });
   } catch (err) {
     console.error(err);
@@ -227,7 +252,6 @@ app.post('/posts/:id/like', authenticate, async (req, res) => {
   }
 });
 
-// add comment
 app.post('/posts/:id/comment', authenticate, async (req, res) => {
   try {
     const { comment } = req.body;
@@ -245,17 +269,17 @@ app.post('/posts/:id/comment', authenticate, async (req, res) => {
   }
 });
 
-// Socket.IO connection logging
 io.on('connection', (socket) => {
   console.log('socket connected', socket.id);
   socket.on('disconnect', () => {
     console.log('socket disconnected', socket.id);
   });
 });
+
 // ---------- CHAT/MESSAGES SCHEMA ----------
 const ChatSchema = new mongoose.Schema({
   name: { type: String, required: true },
-  allowedUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], // who can access
+  allowedUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
 });
 const Chat = mongoose.model('Chat', ChatSchema);
 
@@ -268,7 +292,6 @@ const MessageSchema = new mongoose.Schema({
 const Message = mongoose.model('Message', MessageSchema);
 
 // ---------- CHAT ENDPOINTS ----------
-// Get chats for user
 app.get('/chats', authenticate, async (req, res) => {
   try {
     const chats = await Chat.find({ allowedUsers: req.userId }).lean();
@@ -279,7 +302,6 @@ app.get('/chats', authenticate, async (req, res) => {
   }
 });
 
-// Get messages for a chat
 app.get('/chats/:id/messages', authenticate, async (req, res) => {
   try {
     const chat = await Chat.findById(req.params.id);
@@ -315,14 +337,11 @@ app.get('/chats/:id/messages', authenticate, async (req, res) => {
 io.on('connection', (socket) => {
   console.log('socket connected', socket.id);
 
-  // Join a chat room
   socket.on('join_chat', async ({ chatId, userId }) => {
     try {
       const chat = await Chat.findById(chatId);
       if (!chat) return;
-
       if (!chat.allowedUsers.includes(userId)) return;
-
       socket.join(chatId);
       console.log(`Socket ${socket.id} joined chat ${chatId}`);
     } catch (err) {
@@ -330,7 +349,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Send a message
   socket.on('send_message', async ({ chatId, userId, text }) => {
     try {
       const chat = await Chat.findById(chatId);
@@ -341,7 +359,8 @@ io.on('connection', (socket) => {
 
       const populated = await message.populate('sender', 'username avatar');
 
-      const serverBase = "http://192.168.1.132:3000";
+      // 2. USAR O IP EXTRAÍDO DO FICHEIRO PARA AS IMAGENS DO CHAT
+      const serverBase = `http://${SERVER_IP}:${PORT}`;
 
       const payload = {
         id: message._id,
@@ -356,7 +375,6 @@ io.on('connection', (socket) => {
         },
       };
 
-
       io.to(chatId).emit('new_message', payload);
     } catch (err) {
       console.error(err);
@@ -368,8 +386,8 @@ io.on('connection', (socket) => {
   });
 });
 
-// start server
-const PORT = 3000;
+// 3. INICIAR O SERVIDOR NO 0.0.0.0 (Ouve todos os IPs)
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Backend running on http://0.0.0.0:${PORT}`);
+  console.log(`✅ Backend a correr em http://0.0.0.0:${PORT}`);
+  console.log(`📡 Acessível na rede (Config.ts) via: http://${SERVER_IP}:${PORT}`);
 });
