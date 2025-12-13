@@ -88,3 +88,17 @@ npx expo start --localhost
 This setup ensures your app runs reliably both on the web and on Android devices during development.
 
 ---
+
+Começar base de Dados
+sudo service mongod start
+sudo service mongod status
+
+Começar servidor
+cd backend
+node server.js
+
+Começar expo
+cd Reset-App
+npx expo start -c
+
+Encontrar o ip
