@@ -1,0 +1,96 @@
+/* --- ESTILOS PERSONALIZADOS DARK --- */
+:root {
+    --bg-body: #0f172a;      /* Azul muito escuro */
+    --bg-card: #1e293b;      /* Azul acinzentado */
+    --accent-color: #3b82f6; /* Azul brilhante */
+}
+
+body { 
+    background-color: var(--bg-body); 
+    color: #e2e8f0;
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    padding-bottom: 50px;
+}
+
+/* Navbar */
+.navbar {
+    background-color: var(--bg-card) !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+/* Cartões */
+.card { 
+    border: none; 
+    background-color: var(--bg-card); 
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+    border-radius: 12px;
+    margin-bottom: 25px;
+    transition: transform 0.2s;
+}
+
+/* Cabeçalhos dos Cartões */
+.card-header {
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    background-color: transparent !important;
+    padding: 1.2rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    font-size: 0.9rem;
+}
+
+/* Tabelas */
+.table {
+    --bs-table-bg: transparent;
+    vertical-align: middle;
+    color: #cbd5e1;
+}
+.table-hover tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.03);
+}
+td, th {
+    border-color: rgba(255,255,255,0.05) !important;
+    padding: 1rem 0.5rem !important;
+}
+
+/* Botões */
+.btn-sm { 
+    border-radius: 6px; 
+    padding: 0.25rem 0.7rem; 
+    font-weight: 500;
+}
+
+/* Badges de Usuários */
+.badge-user { 
+    margin-right: 5px; 
+    font-weight: 500; 
+    background-color: rgba(59, 130, 246, 0.2) !important; /* Azul transparente */
+    color: #60a5fa !important; /* Texto azul claro */
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    padding: 6px 10px;
+}
+
+/* Modal */
+.modal-content {
+    background-color: var(--bg-card);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: #fff;
+}
+.modal-header, .modal-footer {
+    border-color: rgba(255,255,255,0.1);
+}
+
+/* Checklist de Users */
+#usersChecklist {
+    background-color: rgba(0,0,0,0.2);
+    border-color: rgba(255,255,255,0.1) !important;
+    border-radius: 8px;
+}
+.form-check {
+    padding: 8px 10px;
+    border-radius: 4px;
+}
+.form-check:hover {
+    background-color: rgba(255,255,255,0.05);
+}

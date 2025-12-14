@@ -102,3 +102,4 @@ cd Reset-App
 npx expo start -c
 
 Encontrar o ip
+ip condif (no cmd)
