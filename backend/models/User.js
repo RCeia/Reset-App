@@ -5,6 +5,10 @@ const UserSchema = new mongoose.Schema({
   password: { type: String, required: true },
   username: { type: String, required: true, default: 'User' },
   avatar: { type: String, default: '' },
+  tags: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Tag'
+    }]
 });
 
 module.exports = mongoose.model('User', UserSchema);

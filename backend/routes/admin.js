@@ -6,17 +6,67 @@ const Post = require('../models/Post');
 // IMPORTANTE: Precisamos importar Message também para poder apagar as mensagens
 const { Chat, Message } = require('../models/Chat'); 
 
+// Adicionar o novo modelo
+const Tag = require('../models/Tag'); // Certifique-se que importa o novo modelo
+
+// ==========================================
+// 🏷️ ROTAS DE GESTÃO DE TAGS (NOVO)
+// ==========================================
+
+// 1. Listar todas as Tags (popula os allowedChats para ver os nomes)
+router.get('/tags', async (req, res) => {
+    try {
+        const tags = await Tag.find()
+            .populate('allowedChats', 'name')
+            .lean();
+        res.json(tags);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// 2. Criar Nova Tag
+router.post('/tags', async (req, res) => {
+    try {
+        const { name, allowedChats } = req.body; // allowedChats é um array de IDs de Chat
+        const newTag = new Tag({ name, allowedChats });
+        await newTag.save();
+        res.json({ success: true, tag: newTag });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// 3. Atualizar Tag
+router.put('/tags/:id', async (req, res) => {
+    try {
+        const { name, allowedChats } = req.body;
+        await Tag.findByIdAndUpdate(req.params.id, { name, allowedChats });
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// 4. Apagar Tag
+router.delete('/tags/:id', async (req, res) => {
+    try {
+        // Opcional: Remover esta tag de todos os utilizadores antes de apagar
+        // await User.updateMany({}, { $pull: { tags: req.params.id } });
+        
+        await Tag.findByIdAndDelete(req.params.id);
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // ==========================================
 // 👤 ROTAS DE USERS
 // ==========================================
 router.get('/users', async (req, res) => {
-    const users = await User.find().select('-password');
+    const users = await User.find()
+        .select('-password')
+        .populate('tags', 'name'); // <--- POPULAR O NOME DAS TAGS AQUI
     res.json(users);
 });
 
+// E adicionar uma rota PUT para atualizar as Tags do utilizador (além de username/email)
 router.put('/users/:id', async (req, res) => {
-    const { username, email } = req.body;
-    await User.findByIdAndUpdate(req.params.id, { username, email });
+    const { username, email, tags } = req.body; // Tags é um array de IDs de Tag
+    await User.findByIdAndUpdate(req.params.id, { username, email, tags });
     res.json({ success: true });
 });
 

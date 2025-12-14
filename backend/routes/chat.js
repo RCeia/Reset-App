@@ -7,13 +7,62 @@ const path = require('path');
 const { Chat, Message } = require('../models/Chat');
 const authenticate = require('../middleware/auth');
 
-// 1. Listar Chats
+const User = require('../models/User'); // Precisamos disto para ler as tags
+const Tag = require('../models/Tag');
+
+// backend/routes/chat.js
+
+// 1. Listar Chats (AGORA COM LÓGICA DE TAGS)
 router.get('/', authenticate, async (req, res) => {
     try {
-        const chats = await Chat.find({ allowedUsers: req.userId })
-            .populate('allowedUsers', 'username avatar'); 
+        const userId = req.userId;
+
+        // 1. Buscar o Utilizador e popular as Tags e os Chats que essas Tags permitem.
+        const user = await User.findById(userId)
+            .populate({
+                path: 'tags',
+                populate: {
+                    path: 'allowedChats',
+                    model: 'Chat' // Certifique-se que o nome do modelo é 'Chat'
+                }
+            })
+            .lean();
+
+        if (!user) {
+            return res.status(404).json({ success: false, error: 'Utilizador não encontrado.' });
+        }
+
+        // 2. Coletar os IDs de todos os chats permitidos pelas Tags
+        let chatIdsFromTags = [];
+        if (user.tags && user.tags.length > 0) {
+            user.tags.forEach(tag => {
+                if (tag.allowedChats) {
+                    // Mapeia os IDs dos chats permitidos por esta tag
+                    const tagChats = tag.allowedChats.map(chat => chat._id);
+                    chatIdsFromTags.push(...tagChats);
+                }
+            });
+        }
+        
+        // Remover duplicados (se o mesmo chat for permitido diretamente e por várias tags)
+        const uniqueTagChatIds = [...new Set(chatIdsFromTags)];
+
+        // 3. Criar a query de busca (OR logic)
+        // O utilizador tem acesso se:
+        // A. O ID dele está em allowedUsers OU
+        // B. O ID do chat está na lista de chats permitidos pelas Tags
+        const chats = await Chat.find({
+            $or: [
+                { allowedUsers: userId },            // Condição A: Membro direto
+                { _id: { $in: uniqueTagChatIds } }   // Condição B: Permitido por Tag
+            ]
+        })
+        .populate('allowedUsers', 'username avatar');
+        
         res.json({ success: true, chats });
+
     } catch (err) {
+        console.error("Erro ao listar chats:", err);
         res.status(500).json({ error: err.message });
     }
 });

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useContext } from 'react';
 import {
   View,
   Text,
@@ -9,15 +9,15 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
-  Alert, // Importei o Alert para avisar quando o chat fecha
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import * as SecureStore from 'expo-secure-store';
 import io, { Socket } from 'socket.io-client';
 import { BASE_URL } from '@/constants/Config';
+import { AuthContext } from '@/app/context/AuthContext'; // <--- IMPORTANTE
 
 interface User {
   _id: string;
@@ -42,6 +42,9 @@ export default function MessagesScreen() {
   const colorScheme = useColorScheme();
   const themeColors = Colors[colorScheme ?? 'light'];
   
+  // ✅ OBTEMOS O TOKEN DO CONTEXTO (Funciona na Web e Mobile)
+  const { token } = useContext(AuthContext);
+
   const [chats, setChats] = useState<Chat[]>([]);
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -52,18 +55,25 @@ export default function MessagesScreen() {
   const listRef = useRef<FlatList<Message>>(null);
 
   // ============================================================
-  // 1. SETUP INICIAL E SOCKETS (AQUI ESTÁ A MUDANÇA 🚀)
+  // 1. SETUP INICIAL E SOCKETS
   // ============================================================
   useEffect(() => {
     let mounted = true;
+
     const init = async () => {
-      const token = await SecureStore.getItemAsync('token');
+      // Se não houver token (ex: logout), não faz nada
       if (!token) return;
+
       try {
+        // Descodificar o JWT para obter o ID do utilizador
+        // (Isto funciona na Web e Mobile porque é JavaScript puro)
         const parts = token.split('.');
-        const payload = JSON.parse(decodeURIComponent(escape(atob(parts[1]))));
+        const payload = JSON.parse(decodeURIComponent(escape(window.atob ? window.atob(parts[1]) : atob(parts[1]))));
+        
         if (mounted) setUserId(payload.id);
-      } catch (e) { console.log('Erro token', e); }
+      } catch (e) { 
+        console.log('Erro ao ler token:', e); 
+      }
 
       // Ligar o Socket
       socketRef.current = io(BASE_URL);
@@ -74,75 +84,69 @@ export default function MessagesScreen() {
         setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
       });
 
-      // --- B. Ouvir Novo Chat Criado (NOVO) ---
+      // --- B. Ouvir Novo Chat Criado ---
       socketRef.current.on('chat_created', (newChat: Chat) => {
-        console.log('Chat criado recebido:', newChat);
         setChats((currentChats) => {
-             // Evita adicionar duplicado se o socket disparar 2x
              if (currentChats.find(c => c._id === newChat._id)) return currentChats;
-             return [newChat, ...currentChats]; // Adiciona no topo
+             return [newChat, ...currentChats];
         });
       });
 
-      // --- C. Ouvir Chat Apagado (NOVO) ---
+      // --- C. Ouvir Chat Apagado ---
       socketRef.current.on('chat_deleted', (deletedChatId: string) => {
-        console.log('Chat apagado:', deletedChatId);
-        
-        // 1. Remove da lista visual
         setChats((currentChats) => currentChats.filter(c => c._id !== deletedChatId));
 
-        // 2. Se eu estiver dentro desse chat, sai dele
         setSelectedChat((currentSelected) => {
             if (currentSelected && currentSelected._id === deletedChatId) {
+                // Alert funciona na Web, mas é básico. Serve para agora.
                 Alert.alert('Aviso', 'Este chat foi encerrado pelo administrador.');
-                return null; // Volta para a lista
+                return null;
             }
             return currentSelected;
         });
       });
-
     };
+
     init();
     return () => { mounted = false; socketRef.current?.disconnect(); };
-  }, []);
+  }, [token]); // Executa quando o token muda (ex: login)
 
-  // Buscar Chats (API Inicial)
+  // Buscar Chats (API)
   useEffect(() => {
     const fetchChats = async () => {
-      const token = await SecureStore.getItemAsync('token');
-      if (!token) return;
+      if (!token) return; // Só busca se tiver token
+
       try {
         const res = await fetch(`${BASE_URL}/chats`, {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { Authorization: `Bearer ${token}` }, // Usa o token do contexto
         });
         const data = await res.json();
         if (data.success) setChats(data.chats);
-      } catch (error) { console.error(error); }
+      } catch (error) { console.error("Erro fetch chats:", error); }
     };
     fetchChats();
-  }, [userId]);
+  }, [token, userId]);
 
   // Entrar no Chat
   useEffect(() => {
-    if (!selectedChat || !userId || !socketRef.current) return;
+    if (!selectedChat || !userId || !socketRef.current || !token) return;
     setMessages([]); 
 
     const loadChatData = async () => {
-      const token = await SecureStore.getItemAsync('token');
       socketRef.current?.emit('join_chat', { chatId: selectedChat._id, userId });
       try {
         const res = await fetch(`${BASE_URL}/chats/${selectedChat._id}/messages`, {
-            headers: { Authorization: `Bearer ${token}` },
+            headers: { Authorization: `Bearer ${token}` }, // Usa o token do contexto
         });
         const data = await res.json();
         if (data.success) {
             setMessages(data.messages);
             setTimeout(() => listRef.current?.scrollToEnd({ animated: false }), 100);
         }
-      } catch (error) { console.error(error); }
+      } catch (error) { console.error("Erro fetch messages:", error); }
     };
     loadChatData();
-  }, [selectedChat, userId]);
+  }, [selectedChat, userId, token]);
 
   const handleSendMessage = () => {
     if (!newMessage.trim() || !selectedChat || !userId) return;

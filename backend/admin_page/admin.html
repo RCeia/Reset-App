@@ -50,7 +50,7 @@
     </div>
 
     <div class="row">
-        <div class="col-lg-6">
+        <div class="col-lg-4">
             <div class="card">
                 <div class="card-header text-warning d-flex justify-content-between align-items-center">
                     <span>👤 Utilizadores</span>
@@ -61,7 +61,7 @@
                         <table class="table table-hover mb-0" id="tabelaUsers">
                             <thead class="text-white-50">
                                 <tr>
-                                    <th class="ps-4">Username</th>
+                                    <th class="ps-4">Username & Tags</th>
                                     <th>Email</th>
                                     <th class="text-end pe-4">Opções</th>
                                 </tr>
@@ -73,7 +73,7 @@
             </div>
         </div>
 
-        <div class="col-lg-6">
+        <div class="col-lg-4">
             <div class="card">
                 <div class="card-header text-success d-flex justify-content-between align-items-center">
                     <span>🖼️ Feed de Posts</span>
@@ -87,6 +87,28 @@
                                     <th class="ps-4">Autor</th>
                                     <th>Likes</th>
                                     <th class="text-end pe-4">Gerir</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header text-primary d-flex justify-content-between align-items-center">
+                    <span>🏷️ Permissões (Tags)</span>
+                    <button class="btn btn-primary btn-sm shadow-sm" onclick="abrirModalCriarTag()">➕ Novo Tag</button>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                        <table class="table table-hover mb-0" id="tabelaTags">
+                            <thead class="text-white-50">
+                                <tr>
+                                    <th class="ps-4">Nome & Chats</th>
+                                    <th class="text-end pe-4">Ações</th>
                                 </tr>
                             </thead>
                             <tbody></tbody>
@@ -120,6 +142,57 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancelar</button>
                 <button type="button" class="btn btn-primary px-4" onclick="salvarChat()">Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="tagModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg">
+            <div class="modal-header">
+                <h5 class="modal-title" id="tagModalTitle">Gerir Tag</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editTagId">
+                <div class="mb-3">
+                    <label class="form-label text-white-50">Nome da Tag</label>
+                    <input type="text" class="form-control bg-dark text-white border-secondary" id="tagNameInput" placeholder="Ex: Staff, Premium, Suporte">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label text-white-50">Chats permitidos</label>
+                    <div id="chatsChecklist" class="border p-3" style="max-height: 200px; overflow-y: auto;">
+                        </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary px-4" onclick="salvarTag()">Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div class="modal fade" id="userTagsModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg">
+            <div class="modal-header">
+                <h5 class="modal-title" id="userEditModalTitle">Gerir Tags</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="userEditModalId">
+                <div class="mb-3">
+                    <label class="form-label text-white-50">Tags de Acesso</label>
+                    <div id="userTagsChecklist" class="border p-3" style="max-height: 200px; overflow-y: auto;">
+                        </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary px-4" onclick="salvarUserTags()">Guardar Tags</button>
             </div>
         </div>
     </div>

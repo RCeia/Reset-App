@@ -1,5 +1,7 @@
 const API_URL = 'http://localhost:3000/admin';
 let todosUsuarios = []; 
+let todosTags = [];      // Cache de todas as tags
+let todosChats = [];     // Cache de todos os chats
 
 // ==========================================
 // 1. CHATS
@@ -10,7 +12,9 @@ async function carregarChats() {
         const chats = await res.json();
         
         const resUsers = await fetch(`${API_URL}/users`);
-        todosUsuarios = await resUsers.json();
+        todosUsuarios = await resUsers.json(); 
+
+        todosChats = chats;
 
         const tbody = document.querySelector('#tabelaChats tbody');
         tbody.innerHTML = '';
@@ -43,7 +47,7 @@ function abrirModalCriar() {
     document.getElementById('editChatId').value = ''; 
     document.getElementById('chatNameInput').value = '';
     document.getElementById('modalTitle').innerText = 'Criar Novo Chat';
-    renderizarCheckboxes([]); 
+    renderizarCheckboxesUsers([]);
     new bootstrap.Modal(document.getElementById('chatModal')).show();
 }
 
@@ -51,11 +55,11 @@ function abrirModalEditar(id, nome, userIdsAtuais) {
     document.getElementById('editChatId').value = id;
     document.getElementById('chatNameInput').value = nome;
     document.getElementById('modalTitle').innerText = 'Editar Chat';
-    renderizarCheckboxes(userIdsAtuais);
+    renderizarCheckboxesUsers(userIdsAtuais);
     new bootstrap.Modal(document.getElementById('chatModal')).show();
 }
 
-function renderizarCheckboxes(selecionadosIds) {
+function renderizarCheckboxesUsers(selecionadosIds) {
     const container = document.getElementById('usersChecklist');
     container.innerHTML = '';
     todosUsuarios.forEach(user => {
@@ -86,7 +90,6 @@ async function salvarChat() {
         body: JSON.stringify({ name, allowedUsers })
     });
 
-    // Fecha o modal corretamente
     const modalEl = document.getElementById('chatModal');
     const modalInstance = bootstrap.Modal.getInstance(modalEl);
     modalInstance.hide();
@@ -103,22 +106,44 @@ async function apagarChat(id) {
 
 
 // ==========================================
-// 2. USERS
+// 2. USERS (CORRIGIDO PARA EDIÇÃO)
 // ==========================================
 async function carregarUsers() {
     try {
         const res = await fetch(`${API_URL}/users`);
         const users = await res.json();
+        
+        const resTags = await fetch(`${API_URL}/tags`);
+        todosTags = await resTags.json();
+
         const tbody = document.querySelector('#tabelaUsers tbody');
         tbody.innerHTML = '';
 
         users.forEach(user => {
+            const tagsHtml = user.tags.map(t => 
+                `<span class="badge bg-primary badge-user">${t.name}</span>`
+            ).join('');
+
+            const tagsIdsDoUser = user.tags.map(t => t._id);
+            
+            // 🚨 CORREÇÃO: Usamos um ID separado para o campo editável
+            const userContentId = `user-name-edit-${user._id}`; 
+
             tbody.innerHTML += `
                 <tr>
-                    <td class="ps-4 align-middle text-white" contenteditable="true" id="user-${user._id}" style="outline: none; border-bottom: 1px dashed #555;">${user.username}</td>
+                    <td class="ps-4 align-middle text-white">
+                        <div contenteditable="true" id="${userContentId}" style="outline: none; border-bottom: 1px dashed #555;">
+                            ${user.username}
+                        </div>
+                        <div class="mt-1">${tagsHtml}</div>
+                    </td>
                     <td class="align-middle text-white-50">${user.email}</td>
                     <td class="text-end pe-4">
-                        <button class="btn btn-outline-warning btn-sm me-1" onclick="salvarUser('${user._id}')">💾</button>
+                        <button class="btn btn-outline-warning btn-sm me-1" onclick="salvarUserNome('${user._id}')">💾</button>
+                        <button class="btn btn-outline-primary btn-sm me-1" 
+                            onclick='abrirModalEditarUserTags("${user._id}", "${user.username}", ${JSON.stringify(tagsIdsDoUser)})'>
+                            🏷️
+                        </button>
                         <button class="btn btn-outline-danger btn-sm" onclick="apagarUser('${user._id}')">🗑️</button>
                     </td>
                 </tr>
@@ -127,12 +152,21 @@ async function carregarUsers() {
     } catch (e) { console.error(e); }
 }
 
-async function salvarUser(id) {
-    const novoNome = document.getElementById(`user-${id}`).innerText;
+// 🚨 CORREÇÃO: Apontar para o ID do elemento editável e limpar o texto
+async function salvarUserNome(id) {
+    const novoNomeElement = document.getElementById(`user-name-edit-${id}`);
+    if (!novoNomeElement) {
+        console.error(`Elemento de edição não encontrado para o ID: user-name-edit-${id}`);
+        return;
+    }
+    
+    const novoNome = novoNomeElement.innerText;
+    const nomeLimpo = novoNome.trim(); 
+    
     await fetch(`${API_URL}/users/${id}`, {
         method: 'PUT',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ username: novoNome })
+        body: JSON.stringify({ username: nomeLimpo }) 
     });
     carregarUsers(); 
 }
@@ -143,6 +177,57 @@ async function apagarUser(id) {
         carregarUsers();
     }
 }
+
+// Funções de gestão de Tags do Utilizador
+function abrirModalEditarUserTags(id, username, tagIdsAtuais) {
+    document.getElementById('userEditModalId').value = id;
+    document.getElementById('userEditModalTitle').innerText = `Gerir Tags de ${username}`;
+    
+    const container = document.getElementById('userTagsChecklist');
+    container.innerHTML = '';
+
+    todosTags.forEach(tag => {
+        const isChecked = tagIdsAtuais.includes(tag._id) ? 'checked' : '';
+        container.innerHTML += `
+            <div class="form-check mb-2">
+                <input class="form-check-input bg-dark border-secondary" type="checkbox" value="${tag._id}" id="chk_user_tag_${tag._id}" ${isChecked}>
+                <label class="form-check-label text-white" for="chk_user_tag_${tag._id}">
+                    ${tag.name}
+                </label>
+            </div>
+        `;
+    });
+    new bootstrap.Modal(document.getElementById('userTagsModal')).show();
+}
+
+async function salvarUserTags() {
+    const id = document.getElementById('userEditModalId').value;
+    
+    const checkboxes = document.querySelectorAll('#userTagsChecklist input[type="checkbox"]:checked');
+    const tags = Array.from(checkboxes).map(cb => cb.value); 
+
+    // O nome do utilizador editável agora tem o ID user-name-edit-ID
+    const novoNomeElement = document.getElementById(`user-name-edit-${id}`);
+    const novoNome = novoNomeElement ? novoNomeElement.innerText.trim() : '';
+    
+    try {
+        await fetch(`${API_URL}/users/${id}`, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ 
+                tags: tags,
+                username: novoNome // Garante que o nome também é enviado
+            })
+        });
+
+        bootstrap.Modal.getInstance(document.getElementById('userTagsModal')).hide();
+        carregarUsers(); 
+    } catch (e) {
+        console.error("Erro ao salvar tags do utilizador:", e);
+        alert("Erro ao salvar: " + e.message);
+    }
+}
+
 
 // ==========================================
 // 3. POSTS
@@ -155,7 +240,6 @@ async function carregarPosts() {
         tbody.innerHTML = '';
 
         posts.forEach(post => {
-            // Pequena limpeza no nome da imagem
             const imgName = post.imagePath ? post.imagePath.split(/[\\/]/).pop() : '';
             
             tbody.innerHTML += `
@@ -179,9 +263,119 @@ async function apagarPost(id) {
     }
 }
 
+
+// ==========================================
+// 4. LÓGICA DE TAGS (NOVO)
+// ==========================================
+async function carregarTags() {
+    try {
+        const res = await fetch(`${API_URL}/tags`);
+        const tags = await res.json();
+        
+        todosTags = tags;
+
+        if (todosChats.length === 0) {
+            const resChats = await fetch(`${API_URL}/chats`);
+            todosChats = await resChats.json();
+        }
+
+        const tbody = document.querySelector('#tabelaTags tbody');
+        tbody.innerHTML = '';
+
+        tags.forEach(tag => {
+            const chatsHtml = tag.allowedChats.map(c => 
+                `<span class="badge badge-user" style="background-color: #6d28d9 !important; color: #d8b4fe !important;">${c.name}</span>`
+            ).join('');
+
+            const chatIdsPermitidos = tag.allowedChats.map(c => c._id);
+            
+            tbody.innerHTML += `
+                <tr>
+                    <td class="ps-4 align-middle">
+                        <strong class="text-white">${tag.name}</strong>
+                        <div class="mt-1">${chatsHtml}</div>
+                    </td>
+                    <td class="text-end pe-4">
+                        <button class="btn btn-outline-info btn-sm me-1" 
+                            onclick='abrirModalEditarTag("${tag._id}", "${tag.name}", ${JSON.stringify(chatIdsPermitidos)})'>
+                            ✏️
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm" onclick="apagarTag('${tag._id}')">🗑️</button>
+                    </td>
+                </tr>
+            `;
+        });
+    } catch (e) { console.error("Erro ao carregar tags:", e); }
+}
+
+function abrirModalCriarTag() {
+    document.getElementById('editTagId').value = ''; 
+    document.getElementById('tagNameInput').value = '';
+    document.getElementById('tagModalTitle').innerText = 'Criar Nova Tag';
+    renderizarCheckboxesChats([]); 
+    new bootstrap.Modal(document.getElementById('tagModal')).show();
+}
+
+function abrirModalEditarTag(id, nome, chatIdsAtuais) {
+    document.getElementById('editTagId').value = id;
+    document.getElementById('tagNameInput').value = nome;
+    document.getElementById('tagModalTitle').innerText = 'Editar Tag';
+    renderizarCheckboxesChats(chatIdsAtuais);
+    new bootstrap.Modal(document.getElementById('tagModal')).show();
+}
+
+function renderizarCheckboxesChats(selecionadosIds) {
+    const container = document.getElementById('chatsChecklist');
+    container.innerHTML = '';
+    todosChats.forEach(chat => {
+        const isChecked = selecionadosIds.includes(chat._id) ? 'checked' : '';
+        container.innerHTML += `
+            <div class="form-check mb-2">
+                <input class="form-check-input bg-dark border-secondary" type="checkbox" value="${chat._id}" id="chk_chat_${chat._id}" ${isChecked}>
+                <label class="form-check-label text-white" for="chk_chat_${chat._id}">
+                    ${chat.name}
+                </label>
+            </div>
+        `;
+    });
+}
+
+async function salvarTag() {
+    const id = document.getElementById('editTagId').value;
+    const name = document.getElementById('tagNameInput').value;
+    
+    const checkboxes = document.querySelectorAll('#chatsChecklist input[type="checkbox"]:checked');
+    const allowedChats = Array.from(checkboxes).map(cb => cb.value);
+
+    const method = id ? 'PUT' : 'POST';
+    const url = id ? `${API_URL}/tags/${id}` : `${API_URL}/tags`;
+
+    await fetch(url, {
+        method: method,
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ name, allowedChats })
+    });
+
+    const modalEl = document.getElementById('tagModal');
+    bootstrap.Modal.getInstance(modalEl).hide();
+    carregarTags();
+}
+
+async function apagarTag(id) {
+    if(confirm('Apagar esta Tag? Os utilizadores com esta tag podem perder acesso a chats.')) {
+        await fetch(`${API_URL}/tags/${id}`, { method: 'DELETE' });
+        carregarTags();
+    }
+}
+
+
 // Inicialização
 document.addEventListener('DOMContentLoaded', () => {
-    carregarUsers();
-    carregarPosts();
-    carregarChats();
+    // Carregar em paralelo para acelerar o dashboard
+    Promise.all([
+        carregarUsers(),
+        carregarPosts(),
+        carregarChats(),
+        carregarTags(), // NOVO: Carregar Tags no início
+    ]).catch(err => console.error("Erro ao iniciar dashboard:", err));
 });
