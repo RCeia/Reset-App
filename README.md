@@ -99,7 +99,7 @@ node server.js
 
 Começar expo
 cd Reset-App
-npx expo start -c
+npx expo start --tunnel
 
 Encontrar o ip
-ip condif (no cmd)
+ip condig (no cmd)

@@ -5,7 +5,7 @@
 const SERVER_IP = "192.168.1.132"; 
 const PORT = "3000";
 
-// Se estiver a usar o emulador Android no PC, ele precisa deste IP especial:
+// Se for usar o emulador Android no PC, ele precisa deste IP especial:
 // const SERVER_IP = "10.0.2.2"; 
 
 export const BASE_URL = `http://${SERVER_IP}:${PORT}`;

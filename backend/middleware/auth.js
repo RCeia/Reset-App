@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User'); // Caminho: ../models/User
-const Chat = require('../models/Chat'); // Caminho: ../models/Chat
+const {Chat} = require('../models/Chat'); // Caminho: ../models/Chat
 const Tag = require('../models/Tag');   // Caminho: ../models/Tag
 
 module.exports = (req, res, next) => {
