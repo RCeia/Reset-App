@@ -17,7 +17,7 @@ const { Message } = require('./models/Chat');
 // 1. CONFIGURAÇÃO DE IP (Sincronização com o Frontend)
 // ==========================================================
 let SERVER_IP = '127.0.0.1'; 
-const PORT = 3000;
+const PORT = 3001;
 
 try {
   // Tenta ler o IP do ficheiro de configuração do Frontend
