@@ -1,19 +1,22 @@
 import React, { useState, useContext } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet, Image, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet, Image, ActivityIndicator, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AuthContext } from '@/app/context/AuthContext';
+import { BASE_URL } from '@/constants/Config';
 
+// Cores Oficiais Reset [cite: 17, 18, 19]
 const RESET_COLORS = {
-  primary: '#fd151b',    // Vermelho (para o logo e texto de destaque)
-  secondary: '#ffb30f',  // Amarelo (para o fundo)
-  typography: '#1e3572', // Azul Escuro (para inputs e botões)
-  blackAlt: '#0d160b',
-  whiteAlt: '#edeff1',
+  primary: '#fd151b',    // Cor principal [cite: 17]
+  secondary: '#ffb30f',  // Cor secundária [cite: 18]
+  typography: '#1e3572', // Cor principal para tipografia [cite: 19]
+  blackAlt: '#0d160b',   // Alternativa de preto [cite: 20]
+  whiteAlt: '#edeff1',   // Alternativa de branco [cite: 21]
 };
 
 export default function LoginScreen() {
   const router = useRouter();
   const { setToken } = useContext(AuthContext); 
+  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -23,13 +26,37 @@ export default function LoginScreen() {
       Alert.alert('Erro', 'Por favor preencha email e password');
       return;
     }
-    setLoading(true);
-    // ... lógica de fetch ...
-    setLoading(false);
+
+    setLoading(true); // Ativa o estado de carregamento
+
+    try {
+      const res = await fetch(`${BASE_URL}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        Alert.alert('Erro', data.error || 'Credenciais inválidas');
+        setLoading(false); // Desativa se houver erro
+        return;
+      }
+
+      await setToken(data.token); 
+      router.replace('/(tabs)/messages');
+
+    } catch (err) {
+      console.error("Erro no fetch:", err);
+      Alert.alert('Erro', 'Não foi possível conectar ao servidor.');
+      setLoading(false); // Desativa se houver erro de rede
+    }
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView contentContainerStyle={styles.container}>
+      {/* Logótipo - Versão Estendida [cite: 8] */}
       <Image 
         source={require('@/assets/images/reset-logo-extended.png')} 
         style={styles.logo}
@@ -45,6 +72,7 @@ export default function LoginScreen() {
         onChangeText={setEmail}
         style={styles.input}
         autoCapitalize="none"
+        keyboardType="email-address"
       />
       
       <TextInput
@@ -59,7 +87,7 @@ export default function LoginScreen() {
       <TouchableOpacity 
         style={[styles.button, { backgroundColor: loading ? '#ccc' : RESET_COLORS.typography }]} 
         onPress={handleLogin}
-        disabled={loading}
+        disabled={loading} // Impede múltiplos cliques enquanto carrega
       >
         {loading ? (
           <ActivityIndicator color="#FFF" />
@@ -67,17 +95,21 @@ export default function LoginScreen() {
           <Text style={styles.buttonText}>ENTRAR</Text>
         )}
       </TouchableOpacity>
-    </View>
+
+      <TouchableOpacity onPress={() => router.push('/register')}>
+        <Text style={styles.link}>Não tens conta? Regista-te</Text>
+      </TouchableOpacity>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { 
-    flex: 1, 
+    flexGrow: 1, 
     justifyContent: 'center', 
     alignItems: 'center', 
     padding: 20, 
-    backgroundColor: RESET_COLORS.secondary // Fundo Amarelo (Combinação nº1)
+    backgroundColor: RESET_COLORS.secondary // Fundo Amarelo (Combinação nº1) [cite: 23]
   },
   logo: {
     width: 220,
@@ -85,24 +117,24 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   title: { 
-  fontSize: 24, // Reduzido de 28 para ser mais subtil
-  fontFamily: 'Archivo-Black', // Alternativa à Black [cite: 51]
-  fontWeight: 'bold',
-  color: RESET_COLORS.primary, 
-  marginBottom: 30,
-  textTransform: 'uppercase', // Opcional: dá um ar mais profissional de competição
-  letterSpacing: 2, // Aumenta o espaçamento para um look mais moderno
-},
+    fontSize: 24, 
+    fontFamily: 'Archivo-Black', // Tipografia oficial para títulos [cite: 51]
+    fontWeight: 'bold',
+    color: RESET_COLORS.primary, // Vermelho sobre Amarelo [cite: 23]
+    marginBottom: 30,
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+  },
   input: { 
     borderWidth: 1, 
     width: '100%', 
     padding: 15, 
-    borderRadius: 4, 
+    borderRadius: 4, // Design simples [cite: 6]
     marginBottom: 15, 
     fontSize: 16,
-    fontFamily: 'NotoSans-Light',
+    fontFamily: 'NotoSans-Light', // Tipografia para corpo de texto [cite: 52]
     borderColor: RESET_COLORS.typography,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)' // Branco levemente transparente
+    backgroundColor: 'rgba(255, 255, 255, 0.9)'
   },
   button: {
     width: '100%',
@@ -114,8 +146,14 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: '#FFF',
-    fontFamily: 'Archivo-SemiBold',
+    fontFamily: 'Archivo-SemiBold', // Tipografia oficial [cite: 51]
     fontWeight: 'bold',
     letterSpacing: 1
+  },
+  link: {
+    marginTop: 20,
+    color: RESET_COLORS.typography,
+    textDecorationLine: 'underline',
+    fontFamily: 'NotoSans-Light'
   }
 });
