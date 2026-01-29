@@ -1,17 +1,54 @@
-const API_URL = 'http://localhost:3000/admin';
+const API_URL = 'http://localhost:3001/admin';
 let todosUsuarios = []; 
-let todosTags = [];      // Cache de todas as tags
-let todosChats = [];     // Cache de todos os chats
+let todosTags = [];      
+let todosChats = [];     
+
+// ==========================================
+// 🔐 HELPER DE AUTENTICAÇÃO
+// ==========================================
+function getToken() {
+    return localStorage.getItem('admin_token');
+}
+
+// Substitui o fetch normal para injetar o token automaticamente
+async function authFetch(url, options = {}) {
+    const token = getToken();
+    
+    // Se não houver token, redirecionar para login (ajusta o URL conforme necessário)
+    if (!token) {
+        window.location.href = '/login.html'; 
+        return;
+    }
+
+    // Adicionar headers
+    if (!options.headers) options.headers = {};
+    options.headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(url, options);
+
+    // Se o token expirou ou é inválido (401/403)
+    if (res.status === 401 || res.status === 403) {
+        alert("Sessão expirada. Faça login novamente.");
+        localStorage.removeItem('admin_token');
+        window.location.href = '/login.html';
+        return;
+    }
+
+    return res;
+}
 
 // ==========================================
 // 1. CHATS
 // ==========================================
 async function carregarChats() {
     try {
-        const res = await fetch(`${API_URL}/chats`);
+        // Usamos authFetch em vez de fetch
+        const res = await authFetch(`${API_URL}/chats`);
+        if(!res) return;
         const chats = await res.json();
         
-        const resUsers = await fetch(`${API_URL}/users`);
+        const resUsers = await authFetch(`${API_URL}/users`);
+        if(!resUsers) return;
         todosUsuarios = await resUsers.json(); 
 
         todosChats = chats;
@@ -84,7 +121,7 @@ async function salvarChat() {
     const method = id ? 'PUT' : 'POST';
     const url = id ? `${API_URL}/chats/${id}` : `${API_URL}/chats`;
 
-    await fetch(url, {
+    await authFetch(url, {
         method: method,
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ name, allowedUsers })
@@ -99,21 +136,23 @@ async function salvarChat() {
 
 async function apagarChat(id) {
     if(confirm('Tem a certeza que quer apagar este chat e todas as mensagens?')) {
-        await fetch(`${API_URL}/chats/${id}`, { method: 'DELETE' });
+        await authFetch(`${API_URL}/chats/${id}`, { method: 'DELETE' });
         carregarChats();
     }
 }
 
 
 // ==========================================
-// 2. USERS (CORRIGIDO PARA EDIÇÃO)
+// 2. USERS
 // ==========================================
 async function carregarUsers() {
     try {
-        const res = await fetch(`${API_URL}/users`);
+        const res = await authFetch(`${API_URL}/users`);
+        if(!res) return;
         const users = await res.json();
         
-        const resTags = await fetch(`${API_URL}/tags`);
+        const resTags = await authFetch(`${API_URL}/tags`);
+        if(!resTags) return;
         todosTags = await resTags.json();
 
         const tbody = document.querySelector('#tabelaUsers tbody');
@@ -126,7 +165,6 @@ async function carregarUsers() {
 
             const tagsIdsDoUser = user.tags.map(t => t._id);
             
-            // 🚨 CORREÇÃO: Usamos um ID separado para o campo editável
             const userContentId = `user-name-edit-${user._id}`; 
 
             tbody.innerHTML += `
@@ -152,18 +190,14 @@ async function carregarUsers() {
     } catch (e) { console.error(e); }
 }
 
-// 🚨 CORREÇÃO: Apontar para o ID do elemento editável e limpar o texto
 async function salvarUserNome(id) {
     const novoNomeElement = document.getElementById(`user-name-edit-${id}`);
-    if (!novoNomeElement) {
-        console.error(`Elemento de edição não encontrado para o ID: user-name-edit-${id}`);
-        return;
-    }
+    if (!novoNomeElement) return;
     
     const novoNome = novoNomeElement.innerText;
     const nomeLimpo = novoNome.trim(); 
     
-    await fetch(`${API_URL}/users/${id}`, {
+    await authFetch(`${API_URL}/users/${id}`, {
         method: 'PUT',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ username: nomeLimpo }) 
@@ -173,12 +207,11 @@ async function salvarUserNome(id) {
 
 async function apagarUser(id) {
     if(confirm('Apagar utilizador?')) {
-        await fetch(`${API_URL}/users/${id}`, { method: 'DELETE' });
+        await authFetch(`${API_URL}/users/${id}`, { method: 'DELETE' });
         carregarUsers();
     }
 }
 
-// Funções de gestão de Tags do Utilizador
 function abrirModalEditarUserTags(id, username, tagIdsAtuais) {
     document.getElementById('userEditModalId').value = id;
     document.getElementById('userEditModalTitle').innerText = `Gerir Tags de ${username}`;
@@ -206,17 +239,16 @@ async function salvarUserTags() {
     const checkboxes = document.querySelectorAll('#userTagsChecklist input[type="checkbox"]:checked');
     const tags = Array.from(checkboxes).map(cb => cb.value); 
 
-    // O nome do utilizador editável agora tem o ID user-name-edit-ID
     const novoNomeElement = document.getElementById(`user-name-edit-${id}`);
     const novoNome = novoNomeElement ? novoNomeElement.innerText.trim() : '';
     
     try {
-        await fetch(`${API_URL}/users/${id}`, {
+        await authFetch(`${API_URL}/users/${id}`, {
             method: 'PUT',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ 
                 tags: tags,
-                username: novoNome // Garante que o nome também é enviado
+                username: novoNome 
             })
         });
 
@@ -234,7 +266,8 @@ async function salvarUserTags() {
 // ==========================================
 async function carregarPosts() {
     try {
-        const res = await fetch(`${API_URL}/posts`);
+        const res = await authFetch(`${API_URL}/posts`);
+        if(!res) return;
         const posts = await res.json();
         const tbody = document.querySelector('#tabelaPosts tbody');
         tbody.innerHTML = '';
@@ -258,25 +291,26 @@ async function carregarPosts() {
 
 async function apagarPost(id) {
     if(confirm('Apagar post permanentemente?')) {
-        await fetch(`${API_URL}/posts/${id}`, { method: 'DELETE' });
+        await authFetch(`${API_URL}/posts/${id}`, { method: 'DELETE' });
         carregarPosts();
     }
 }
 
 
 // ==========================================
-// 4. LÓGICA DE TAGS (NOVO)
+// 4. LÓGICA DE TAGS
 // ==========================================
 async function carregarTags() {
     try {
-        const res = await fetch(`${API_URL}/tags`);
+        const res = await authFetch(`${API_URL}/tags`);
+        if(!res) return;
         const tags = await res.json();
         
         todosTags = tags;
 
         if (todosChats.length === 0) {
-            const resChats = await fetch(`${API_URL}/chats`);
-            todosChats = await resChats.json();
+            const resChats = await authFetch(`${API_URL}/chats`);
+            if(resChats) todosChats = await resChats.json();
         }
 
         const tbody = document.querySelector('#tabelaTags tbody');
@@ -350,7 +384,7 @@ async function salvarTag() {
     const method = id ? 'PUT' : 'POST';
     const url = id ? `${API_URL}/tags/${id}` : `${API_URL}/tags`;
 
-    await fetch(url, {
+    await authFetch(url, {
         method: method,
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ name, allowedChats })
@@ -363,19 +397,28 @@ async function salvarTag() {
 
 async function apagarTag(id) {
     if(confirm('Apagar esta Tag? Os utilizadores com esta tag podem perder acesso a chats.')) {
-        await fetch(`${API_URL}/tags/${id}`, { method: 'DELETE' });
+        await authFetch(`${API_URL}/tags/${id}`, { method: 'DELETE' });
         carregarTags();
     }
+}
+
+function logout() {
+    localStorage.removeItem('admin_token'); // Apaga a "chave" de acesso
+    window.location.href = 'login.html';    // Manda de volta para a entrada
 }
 
 
 // Inicialização
 document.addEventListener('DOMContentLoaded', () => {
-    // Carregar em paralelo para acelerar o dashboard
-    Promise.all([
-        carregarUsers(),
-        carregarPosts(),
-        carregarChats(),
-        carregarTags(), // NOVO: Carregar Tags no início
-    ]).catch(err => console.error("Erro ao iniciar dashboard:", err));
+    // Verificar se tem token antes de tentar carregar
+    if (!getToken()) {
+        window.location.href = '/login.html'; // Manda para login
+    } else {
+        Promise.all([
+            carregarUsers(),
+            carregarPosts(),
+            carregarChats(),
+            carregarTags(), 
+        ]).catch(err => console.error("Erro ao iniciar dashboard:", err));
+    }
 });
