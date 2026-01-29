@@ -87,6 +87,7 @@ const styles = StyleSheet.create({
   title: { 
   fontSize: 24, // Reduzido de 28 para ser mais subtil
   fontFamily: 'Archivo-Black', // Alternativa à Black [cite: 51]
+  fontWeight: 'bold',
   color: RESET_COLORS.primary, 
   marginBottom: 30,
   textTransform: 'uppercase', // Opcional: dá um ar mais profissional de competição
