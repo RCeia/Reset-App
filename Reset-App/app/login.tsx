@@ -96,7 +96,7 @@ export default function LoginScreen() {
         )}
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => router.push('/register')}>
+      <TouchableOpacity onPress={() => router.push('/')}>
         <Text style={styles.link}>Não tens conta? Regista-te</Text>
       </TouchableOpacity>
     </ScrollView>
