@@ -18,7 +18,7 @@ import * as SecureStore from 'expo-secure-store';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import AuthProvider, { AuthContext } from '@/app/context/AuthContext';
-import DefaultAvatar from '@/assets/images/defaultavatar.jpg';
+import DefaultAvatar from '@/assets/images/defaultAvatar.jpg';
 
 import { BASE_URL } from '@/constants/Config';
 
