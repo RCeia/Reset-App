@@ -47,11 +47,11 @@ interface DateObj { year: number; month: number; day: number; hours: number; min
 const fim: DateObj = { day: 3, month: 3, year: 2026, hours: 21, minutes: 59 };
 
 const events = [
-  { id: "1", title: "Check-in + Coffee Break", startHour: 9, endHour: 10, color: RESET_COLORS.whiteAlt }, 
+  { id: "1", title: "Check-in + Coffee Break", startHour: 9, endHour: 10, color: RESET_COLORS.typography }, 
   { id: "2", title: "Workshops", startHour: 10, endHour: 12, color: RESET_COLORS.secondary },
-  { id: "3", title: "Almoço", startHour: 12, endHour: 13, color: RESET_COLORS.whiteAlt },
+  { id: "3", title: "Almoço", startHour: 12, endHour: 13, color: RESET_COLORS.typography },
   { id: "4", title: "Opening Ceremony", startHour: 13, endHour: 14.5, color: RESET_COLORS.secondary },
-  { id: "5", title: "Topic Presentation", startHour: 14.5, endHour: 15.5, color: RESET_COLORS.whiteAlt },
+  { id: "5", title: "Topic Presentation", startHour: 14.5, endHour: 15.5, color: RESET_COLORS.typography },
   { id: "6", title: "Competition", startHour: 15.5, endHour: 23.99, color: RESET_COLORS.primary },
 ];
 
@@ -338,7 +338,10 @@ export default function AccountScreen() {
       />
 
       <TouchableOpacity style={styles.avatarWrapper} onPress={pickImage}>
-        <Image source={avatarUri ? { uri: avatarUri } : DefaultAvatar} style={styles.avatar} />
+        <Image 
+          source={avatarUri ? { uri: avatarUri } : require('@/assets/images/defaultavatar.jpg')} 
+          style={styles.avatar} 
+        />
         <View style={styles.plusIcon}>
           <Text style={styles.plusText}>+</Text>
         </View>
@@ -379,7 +382,16 @@ const styles = StyleSheet.create({
   primaryButtonText: { color: '#FFF', fontFamily: 'Archivo-SemiBold', fontWeight: 'bold', letterSpacing: 1 },
 
   avatarWrapper: { position: 'relative', marginBottom: 10, marginTop: 10 }, 
-  avatar: { width: AVATAR_SIZE, height: AVATAR_SIZE, borderRadius: AVATAR_SIZE / 2, borderWidth: 3, borderColor: RESET_COLORS.typography, backgroundColor: RESET_COLORS.whiteAlt },
+  
+  // --- ALTERAÇÃO AQUI: Borda Azul Escuro ---
+  avatar: { 
+    width: AVATAR_SIZE, height: AVATAR_SIZE, 
+    borderRadius: AVATAR_SIZE / 2, 
+    borderWidth: 3, 
+    borderColor: RESET_COLORS.typography, // Azul Escuro
+    backgroundColor: RESET_COLORS.whiteAlt 
+  },
+  
   plusIcon: { position: 'absolute', right: 0, bottom: 0, backgroundColor: RESET_COLORS.primary, width: 35, height: 35, borderRadius: 18, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#fff' },
   plusText: { color: '#fff', fontSize: 20, fontWeight: 'bold', marginTop: -2 },
 
@@ -388,7 +400,7 @@ const styles = StyleSheet.create({
     width: '65%', 
     backgroundColor: RESET_COLORS.typography, 
     borderRadius: 6, 
-    paddingVertical: 3,  // Padding vertical mínimo (3px)
+    paddingVertical: 3, 
     paddingHorizontal: 5, 
     marginBottom: 20, 
     borderWidth: 1, 
@@ -405,23 +417,26 @@ const styles = StyleSheet.create({
 
   // --- HORÁRIO ---
   scheduleSection: { width: '100%', paddingHorizontal: 15, marginTop: 10 },
+  
   scheduleContainer: { 
     width: "100%", 
-    backgroundColor: RESET_COLORS.typography, 
+    backgroundColor: '#FFF', // Fundo Branco
     borderRadius: 8, 
     borderWidth: 1, 
-    borderColor: RESET_COLORS.typography, 
+    borderColor: RESET_COLORS.typography, // Borda Azul Escuro
     overflow: "hidden", 
     position: 'relative' 
   },
+  
   hourRow: { 
     borderBottomWidth: 1, 
-    borderBottomColor: "rgba(255,255,255,0.1)", 
+    borderBottomColor: "#eee", // Linhas cinzentas claras
     justifyContent: "center", 
     paddingLeft: 15, 
-    backgroundColor: RESET_COLORS.typography 
+    backgroundColor: '#FFF' // Fundo Branco
   },
-  hourText: { fontSize: 12, color: "#edeff1", fontFamily: 'NotoSans-Light' },
+  
+  hourText: { fontSize: 12, color: "#666", fontFamily: 'NotoSans-Light' },
   
   event: { position: "absolute", left: 60, right: 5, borderRadius: 4, paddingHorizontal: 8, justifyContent: "center" },
   eventText: { fontFamily: 'Archivo-SemiBold', fontSize: 10 },

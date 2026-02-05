@@ -98,7 +98,7 @@ export default function HomeScreen() {
         <View style={styles.cardHeader}>
           <Text style={styles.cardTitle}>CASE STUDY</Text>
           <View style={styles.badge}>
-            <Text style={styles.badgeText}>ESTRATÉGIA</Text>
+            <Text style={styles.badgeText}>ENGENHARIA</Text>
           </View>
         </View>
         
