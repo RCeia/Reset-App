@@ -102,4 +102,4 @@ cd Reset-App
 npx expo start --tunnel
 
 Encontrar o ip
-ip condig (no cmd)
+ip config (no cmd)
