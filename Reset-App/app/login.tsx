@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet, Image, Acti
 import { useRouter } from 'expo-router';
 import { AuthContext } from '@/app/context/AuthContext';
 import { BASE_URL } from '@/constants/Config';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Cores Oficiais Reset [cite: 17, 18, 19]
 const RESET_COLORS = {
@@ -43,6 +44,8 @@ export default function LoginScreen() {
         setLoading(false); // Desativa se houver erro
         return;
       }
+
+      await AsyncStorage.setItem('user_token', data.token);
 
       await setToken(data.token); 
       router.replace('/(tabs)/messages');

@@ -7,7 +7,8 @@ import { Platform } from 'react-native';
 //const SERVER_IP = "192.168.1.71";
 
 //const SERVER_IP = '192.168.1.132'; // O teu IP atual
-const SERVER_IP = '192.168.1.243';
+//const SERVER_IP = '192.168.1.243';
+const SERVER_IP = '172.20.10.2';
 const PORT = '3001';
 
 export const BASE_URL = Platform.OS === 'web'
