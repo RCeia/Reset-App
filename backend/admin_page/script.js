@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:3001/admin';
+const API_URL = 'http://localhost:3000/admin';
 let todosUsuarios = []; 
 let todosTags = [];      
 let todosChats = [];     

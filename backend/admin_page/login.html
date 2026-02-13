@@ -56,8 +56,8 @@
         console.log("Tentando login com:", email); // 🔍 DEBUG
 
         try {
-            // 🚨 CORREÇÃO IMPORTANTE: Mudei para porta 3001
-            const res = await fetch('http://localhost:3001/admin/login', {
+            // 🚨 CORREÇÃO IMPORTANTE: Mudei para porta 3000
+            const res = await fetch('http://localhost:3000/admin/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password })

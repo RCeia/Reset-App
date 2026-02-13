@@ -1,101 +1,50 @@
 const express = require('express');
 const router = express.Router();
 const path = require('path');
-const fs = require('fs');
-const multer = require('multer');
 const Post = require('../models/Post');
 const authenticate = require('../middleware/auth');
+const multer = require('multer');
 
-// Configuração Multer para Posts
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        const dir = 'uploads/';
-        if (!fs.existsSync(dir)) fs.mkdirSync(dir);
-        cb(null, dir);
-    },
-    filename: (req, file, cb) => cb(null, `${req.userId}-${Date.now()}${path.extname(file.originalname)}`)
-});
-const upload = multer({ storage });
+const upload = multer({ dest: 'uploads/' });
 
-// LISTAR POSTS
-router.get('/', async (req, res) => {
+router.get('/', authenticate, async (req, res) => {
     try {
-        const posts = await Post.find().sort({ createdAt: -1 }).limit(100).populate('author', 'username avatar').lean();
-        
-        const mapped = posts.map(p => ({
-            id: p._id,
-            imageUrl: `${req.protocol}://${req.get('host')}/uploads/${path.basename(p.imagePath)}`,
-            likes: p.likes,
-            comments: p.comments,
-            createdAt: p.createdAt,
-            author: {
-                username: p.author?.username || 'Unknown',
-                avatar: p.author?.avatar ? `${req.protocol}://${req.get('host')}/uploads/${path.basename(p.author.avatar)}` : '',
-            },
-        }));
+        const posts = await Post.find()
+            .sort({ createdAt: -1 })
+            .populate('author', 'username avatar') 
+            .populate('comments.user', 'username avatar') 
+            .lean();
+
+        const mapped = posts.map(p => {
+            const getUrl = (s) => s ? `${req.protocol}://${req.get('host')}/uploads/${path.basename(s)}` : '';
+
+            return {
+                id: p._id,
+                imageUrl: getUrl(p.imagePath),
+                likes: p.likes.length,
+                likedByMe: p.likes.some(id => id.toString() === req.userId),
+                author: {
+                    username: p.author?.username || 'User',
+                    avatar: getUrl(p.author?.avatar),
+                },
+                comments: (p.comments || []).map(c => ({
+                    text: c.text,
+                    username: c.user?.username || 'Utilizador',
+                    avatar: getUrl(c.user?.avatar) // FOTO VIVA!
+                }))
+            };
+        });
         res.json({ success: true, posts: mapped });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// CRIAR POST
-router.post('/', authenticate, upload.single('image'), async (req, res) => {
-    try {
-        if (!req.file) return res.status(400).json({ error: 'Image required' });
-        const post = new Post({ imagePath: req.file.path, author: req.userId });
-        await post.save();
-        
-        // Populate para enviar via Socket
-        const populatedPost = await Post.findById(post._id).populate('author', 'username avatar').lean();
-        
-        // Prepara objeto igual ao GET
-        const payload = {
-            id: populatedPost._id,
-            imageUrl: `${req.protocol}://${req.get('host')}/uploads/${path.basename(populatedPost.imagePath)}`,
-            likes: populatedPost.likes,
-            comments: populatedPost.comments,
-            createdAt: populatedPost.createdAt,
-            author: {
-                username: populatedPost.author?.username || 'Unknown',
-                avatar: populatedPost.author?.avatar ? `${req.protocol}://${req.get('host')}/uploads/${path.basename(populatedPost.author.avatar)}` : '',
-            },
-        };
-
-        const io = req.app.get('io');
-        io.emit('new_post', payload);
-        res.json({ success: true, post: payload });
-    } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-// LIKE POST
-router.post('/:id/like', authenticate, async (req, res) => {
-    try {
-        const post = await Post.findById(req.params.id);
-        if (!post) return res.status(404).json({ success: false });
-        
-        post.likes = (post.likes || 0) + 1;
-        await post.save();
-        
-        const io = req.app.get('io');
-        io.emit('post_liked', { id: post._id, likes: post.likes });
-        res.json({ success: true, likes: post.likes });
-    } catch (err) { res.status(500).json({ success: false }); }
-});
-
-// COMENTAR POST - FALTAVA ISTO
 router.post('/:id/comment', authenticate, async (req, res) => {
     try {
-        const { comment } = req.body;
-        if (!comment) return res.status(400).json({ success: false });
-        
         const post = await Post.findById(req.params.id);
-        if (!post) return res.status(404).json({ success: false });
-        
-        post.comments.push(comment);
+        post.comments.push({ user: req.userId, text: req.body.comment });
         await post.save();
-    
-        const io = req.app.get('io');
-        io.emit('post_commented', { id: post._id, comment });
-        res.json({ success: true, comments: post.comments });
+        req.app.get('io').emit('post_commented', { id: post._id });
+        res.json({ success: true });
     } catch (err) { res.status(500).json({ success: false }); }
 });
 
