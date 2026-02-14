@@ -11,7 +11,8 @@ const adminRoutes = require('./routes/admin');
 const postRoutes = require('./routes/posts');
 const chatRoutes = require('./routes/chat');
 const authRoutes = require('./routes/auth'); 
-const { Message } = require('./models/Chat'); 
+const { Message } = require('./models/Chat');
+const scoreRoutes = require('./routes/score');
 
 // ==========================================================
 // 1. CONFIGURAÇÃO DE IP (Sincronização com o Frontend)
@@ -62,6 +63,7 @@ app.use('/', authRoutes);
 app.use('/admin', adminRoutes);
 app.use('/posts', postRoutes);
 app.use('/chats', chatRoutes);
+app.use('/api/score', scoreRoutes);
 
 // ================= SOCKET (TEMPO REAL) =================
 io.on('connection', (socket) => {
