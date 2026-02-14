@@ -22,24 +22,35 @@ export default function SocialScreen() {
   useEffect(() => {
     loadPosts();
     socketRef.current = io(BASE_URL);
+    
+    socketRef.current.on('new_post', (newPost: any) => {
+        setPosts(prev => [newPost, ...prev]);
+    });
+
     socketRef.current.on('post_liked', (p: any) => {
       setPosts(prev => prev.map(post => post.id === p.id ? { ...post, likes: p.likes } : post));
     });
+
     socketRef.current.on('post_commented', () => loadPosts());
+    
     return () => socketRef.current?.disconnect();
   }, []);
 
   const loadPosts = async () => {
     const token = await SecureStore.getItemAsync('token');
     try {
-      const res = await fetch(`${BASE_URL}/posts`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`${BASE_URL}/posts`, { 
+          headers: { Authorization: `Bearer ${token}` } 
+      });
       const data = await res.json();
-      if (data.success) setPosts(data.posts.map((p: any) => ({ ...p, newComment: '' })));
+      if (data.success) {
+          setPosts(data.posts.map((p: any) => ({ ...p, newComment: '' })));
+      }
     } catch (err) { console.error(err); }
   };
 
   const getAvatar = (url: string | null, name: string) => {
-    if (url && url.trim() !== '') return { uri: url };
+    if (url && url.trim() !== '' && url !== 'undefined') return { uri: url };
     const initial = name ? name.charAt(0).toUpperCase() : 'U';
     return { uri: `https://ui-avatars.com/api/?background=1e3572&color=fff&name=${initial}` };
   };
@@ -51,36 +62,68 @@ export default function SocialScreen() {
       aspect: [1, 1],
       quality: 0.7,
     });
+
     if (!result.canceled) {
       setUploading(true);
       const token = await SecureStore.getItemAsync('token');
       const formData = new FormData();
+      
       // @ts-ignore
-      formData.append('image', { uri: result.assets[0].uri, type: 'image/jpeg', name: 'post.jpg' });
+      formData.append('image', { 
+          uri: result.assets[0].uri, 
+          type: 'image/jpeg', 
+          name: 'post.jpg' 
+      });
+
       try {
-        await fetch(`${BASE_URL}/posts/upload`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData });
-        loadPosts();
-      } catch (err) { Alert.alert("Erro", "Falha no upload"); }
-      finally { setUploading(false); }
+        const res = await fetch(`${BASE_URL}/posts`, { 
+            method: 'POST', 
+            headers: { Authorization: `Bearer ${token}` }, 
+            body: formData 
+        });
+        const data = await res.json();
+        if (data.success) {
+            Alert.alert("Sucesso", "Foto publicada!");
+            loadPosts();
+        } else {
+            Alert.alert("Erro", data.error || "Falha no servidor");
+        }
+      } catch (err) { 
+          Alert.alert("Erro", "Falha no upload"); 
+      } finally { 
+          setUploading(false); 
+      }
     }
   };
 
   const handleLike = async (postId: string) => {
     const token = await SecureStore.getItemAsync('token');
-    setPosts(prev => prev.map(p => p.id === postId ? { ...p, likedByMe: !p.likedByMe, likes: p.likedByMe ? p.likes - 1 : p.likes + 1 } : p));
-    await fetch(`${BASE_URL}/posts/${postId}/like`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+    setPosts(prev => prev.map(p => p.id === postId ? { 
+        ...p, 
+        likedByMe: !p.likedByMe, 
+        likes: p.likedByMe ? p.likes - 1 : p.likes + 1 
+    } : p));
+    await fetch(`${BASE_URL}/posts/${postId}/like`, { 
+        method: 'POST', 
+        headers: { Authorization: `Bearer ${token}` } 
+    });
   };
 
   const handleSendComment = async (postId: string) => {
     const token = await SecureStore.getItemAsync('token');
     const post = posts.find(p => p.id === postId);
     if (!post?.newComment) return;
+    
     await fetch(`${BASE_URL}/posts/${postId}/comment`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      headers: { 
+          Authorization: `Bearer ${token}`, 
+          'Content-Type': 'application/json' 
+      },
       body: JSON.stringify({ comment: post.newComment }),
     });
     setPosts(prev => prev.map(p => p.id === postId ? { ...p, newComment: '' } : p));
+    loadPosts();
   };
 
   return (
@@ -95,13 +138,20 @@ export default function SocialScreen() {
                 <Image source={getAvatar(item.author.avatar, item.author.username)} style={styles.avatar} />
                 <Text style={{ fontWeight: 'bold', color: RESET_THEME.whiteAlt }}>{item.author.username}</Text>
               </View>
-              <Image source={{ uri: item.imageUrl }} style={styles.image} />
+              
+              <Image source={{ uri: item.imageUrl }} style={styles.image} resizeMode="cover" />
+              
               <TouchableOpacity onPress={() => handleLike(item.id)} style={styles.likeBtn}>
-                <Ionicons name={item.likedByMe ? "heart" : "heart-outline"} size={26} color={item.likedByMe ? RESET_THEME.primaryRed : RESET_THEME.whiteAlt} />
+                <Ionicons 
+                    name={item.likedByMe ? "heart" : "heart-outline"} 
+                    size={26} 
+                    color={item.likedByMe ? RESET_THEME.primaryRed : RESET_THEME.whiteAlt} 
+                />
                 <Text style={{ color: RESET_THEME.whiteAlt, fontWeight: 'bold' }}> {item.likes} Likes</Text>
               </TouchableOpacity>
+
               <View style={{ padding: 10 }}>
-                {item.comments.map((c: any, i: number) => (
+                {item.comments && item.comments.map((c: any, i: number) => (
                   <View key={i} style={[styles.commentBubble, { backgroundColor: RESET_THEME.secondaryYellow }]}>
                     <Image source={getAvatar(c.avatar, c.username)} style={styles.miniAvatar} />
                     <View style={{ flex: 1 }}>
@@ -111,6 +161,7 @@ export default function SocialScreen() {
                   </View>
                 ))}
               </View>
+
               <View style={styles.inputRow}>
                 <TextInput 
                   style={styles.input} 
@@ -126,6 +177,7 @@ export default function SocialScreen() {
           )}
         />
       </KeyboardAvoidingView>
+      
       <TouchableOpacity style={styles.fab} onPress={pickImageAndPost} disabled={uploading}>
         {uploading ? <ActivityIndicator color="#FFF" /> : <Ionicons name="camera" size={30} color="#FFF" />}
       </TouchableOpacity>
