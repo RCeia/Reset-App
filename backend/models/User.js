@@ -9,7 +9,9 @@ const UserSchema = new mongoose.Schema({
   tags: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Tag'
-    }]
+    }],
+    resetPasswordToken: String,
+  resetPasswordExpires: Date,
 });
 
 module.exports = mongoose.model('User', UserSchema);

@@ -24,7 +24,7 @@ import * as WebBrowser from "expo-web-browser";
 import { Asset } from "expo-asset";
 
 import { AuthContext } from '@/app/context/AuthContext';
-import DefaultAvatar from '@/assets/images/defaultavatar.jpg';
+import DefaultAvatar from '@/assets/images/defaultAvatar.jpg';
 import { BASE_URL } from '@/constants/Config';
 
 // --- CORES OFICIAIS RESET ---
@@ -339,7 +339,7 @@ export default function AccountScreen() {
 
       <TouchableOpacity style={styles.avatarWrapper} onPress={pickImage}>
         <Image 
-          source={avatarUri ? { uri: avatarUri } : require('@/assets/images/defaultavatar.jpg')} 
+          source={avatarUri ? { uri: avatarUri } : require('@/assets/images/defaultAvatar.jpg')} 
           style={styles.avatar} 
         />
         <View style={styles.plusIcon}>

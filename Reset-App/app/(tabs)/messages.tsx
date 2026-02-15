@@ -181,7 +181,7 @@ export default function MessagesScreen() {
                     <View style={[styles.messageContainer, { flexDirection: isMe ? 'row-reverse' : 'row' }]}>
                         
                         <Image 
-                            source={item.sender.avatar ? { uri: item.sender.avatar } : require('@/assets/images/defaultavatar.jpg')} 
+                            source={item.sender.avatar ? { uri: item.sender.avatar } : require('@/assets/images/defaultAvatar.jpg')} 
                             style={styles.userAvatarImage} 
                             resizeMode="cover" 
                         />
