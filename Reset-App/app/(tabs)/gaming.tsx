@@ -78,6 +78,8 @@ export default function FlappyScreen() {
   const score = useRef(0);
   const nextObstacleId = useRef(2);
   const frameId = useRef<number | null>(null);
+  const lastFrameTime = useRef(Date.now());
+  const accumulator = useRef(0);
 
   // --- 3. FUNÇÕES LÓGICAS (DEFINIDAS DENTRO DO COMPONENTE) ---
   
@@ -184,67 +186,100 @@ export default function FlappyScreen() {
       return;
     }
 
+    const FPS = 60;
+    const TIME_STEP = 1000 / FPS; // 16.66ms cravados
+    
+    // Reseta os relógios sempre que o jogo arranca
+    lastFrameTime.current = Date.now();
+    accumulator.current = 0;
+
     const gameLoop = () => {
+      const now = Date.now();
+      let deltaTime = now - lastFrameTime.current;
+      
+      // Bloqueio de Segurança: Se a app travar (ou for minimizada), impede que o deltaTime seja gigante
+      if (deltaTime > 250) deltaTime = 250; 
+      
+      lastFrameTime.current = now;
+      accumulator.current += deltaTime;
+
       let isGameOver = false;
-
-      // 1. Bird Physics
-      birdVelocity.current += GRAVITY;
-      birdY.current += birdVelocity.current;
-
-      if (birdY.current + BIRD_HEIGHT >= height || birdY.current <= 0) {
-        isGameOver = true;
-      }
-
-      // 2. Obstacles
-      let newObstacles = [];
+      let physicsUpdated = false;
       let newScore = score.current;
+      let newObstacles = obstacles.current;
 
-      for (const obs of obstacles.current) {
-        const newX = obs.x - OBSTACLE_SPEED;
+      // --- O SEGREDO DOS JOGOS: O WHILE LOOP ---
+      // Vai calcular a física o número de vezes necessárias para acompanhar o tempo real
+      while (accumulator.current >= TIME_STEP) {
+        // 1. Bird Physics
+        birdVelocity.current += GRAVITY;
+        birdY.current += birdVelocity.current;
 
-        // Collision
-        const birdLeft = BIRD_X_POSITION;
-        const birdRight = BIRD_X_POSITION + BIRD_WIDTH;
-        const obstacleLeft = newX;
-        const obstacleRight = newX + OBSTACLE_WIDTH;
-        const isCollidingX = birdRight > obstacleLeft && birdLeft < obstacleRight;
-
-        const topObstacleBottom = obs.height;
-        const bottomObstacleTop = obs.height + OBSTACLE_GAP;
-        const isCollidingY = birdY.current < topObstacleBottom || (birdY.current + BIRD_HEIGHT) > bottomObstacleTop;
-
-        if (isCollidingX && isCollidingY) {
+        if (birdY.current + BIRD_HEIGHT >= height || birdY.current <= 0) {
           isGameOver = true;
         }
 
-        // Scoring
-        const obstacleBackEdge = newX + OBSTACLE_WIDTH;
-        const birdCenterX = BIRD_X_POSITION + BIRD_WIDTH / 2;
-        if (obstacleBackEdge < birdCenterX && !obs.passed) {
-          newScore++;
-          obs.passed = true;
+        // 2. Obstacles
+        let tempObstacles = [];
+        for (const obs of newObstacles) {
+          const newX = obs.x - OBSTACLE_SPEED;
+
+          // Colisões
+          const birdLeft = BIRD_X_POSITION;
+          const birdRight = BIRD_X_POSITION + BIRD_WIDTH;
+          const obstacleLeft = newX;
+          const obstacleRight = newX + OBSTACLE_WIDTH;
+          const isCollidingX = birdRight > obstacleLeft && birdLeft < obstacleRight;
+
+          const topObstacleBottom = obs.height;
+          const bottomObstacleTop = obs.height + OBSTACLE_GAP;
+          const isCollidingY = birdY.current < topObstacleBottom || (birdY.current + BIRD_HEIGHT) > bottomObstacleTop;
+
+          if (isCollidingX && isCollidingY) {
+            isGameOver = true;
+          }
+
+          // Pontuação
+          const obstacleBackEdge = newX + OBSTACLE_WIDTH;
+          const birdCenterX = BIRD_X_POSITION + BIRD_WIDTH / 2;
+          if (obstacleBackEdge < birdCenterX && !obs.passed) {
+            newScore++;
+            obs.passed = true;
+          }
+
+          if (newX > -OBSTACLE_WIDTH) {
+            tempObstacles.push({ ...obs, x: newX });
+          }
         }
 
-        if (newX > -OBSTACLE_WIDTH) {
-          newObstacles.push({ ...obs, x: newX });
+        // Add New Obstacle
+        const lastObstacle = tempObstacles[tempObstacles.length - 1];
+        if (lastObstacle && lastObstacle.x < width - OBSTACLE_SPACING) {
+          tempObstacles.push(createObstacle(width, nextObstacleId.current));
+          nextObstacleId.current++;
         }
+
+        newObstacles = tempObstacles;
+        
+        // Remove 16.66ms do acumulador e regista que a física mexeu
+        accumulator.current -= TIME_STEP;
+        physicsUpdated = true;
+
+        if (isGameOver) break; // Sai do while imediatamente se perder
       }
 
-      // Add New Obstacle
-      const lastObstacle = newObstacles[newObstacles.length - 1];
-      if (lastObstacle && lastObstacle.x < width - OBSTACLE_SPACING) {
-        newObstacles.push(createObstacle(width, nextObstacleId.current));
-        nextObstacleId.current++;
+      // --- RENDERIZAÇÃO (O GRANDE TRUQUE DO ANDROID ANTIGO) ---
+      // Só gastamos processamento a "pintar" o ecrã se a física realmente andou para a frente!
+      if (physicsUpdated) {
+        obstacles.current = newObstacles;
+        score.current = newScore;
+
+        setGameState({
+          birdY: birdY.current,
+          obstacles: newObstacles,
+          score: newScore,
+        });
       }
-
-      obstacles.current = newObstacles;
-      score.current = newScore;
-
-      setGameState({
-        birdY: birdY.current,
-        obstacles: newObstacles,
-        score: newScore,
-      });
 
       if (isGameOver) {
         setGameOver(true);
