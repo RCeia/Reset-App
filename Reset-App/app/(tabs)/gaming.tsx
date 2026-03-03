@@ -9,8 +9,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // --- CONSTANTES GLOBAIS (Isto pode ficar fora) ---
 const PIPE_CAP_IMG = require('@/assets/images/pipe_cap.png');
 const PIPE_BODY_IMG = require('@/assets/images/pipe_body.png');
-const BIRD_IMG = require('../../assets/images/bird_teste2.png');
-const BACKGROUND_IMG = require('../../assets/images/fundo_teste.png');
+const BIRD_IMG = require('../../assets/images/bird_teste3.png');
+const BACKGROUND_IMG = require('../../assets/images/fundo_teste2.png');
 const { width, height } = Dimensions.get('window');
 
 // --- Configurações do Pássaro e Canos ---
@@ -40,7 +40,7 @@ const RESET_COLORS = {
 };
 
 const ASSETS_TO_LOAD = [
-  require('../../assets/images/bird_teste2.png'),
+  require('../../assets/images/bird_teste3.png'),
   require('@/assets/images/pipe_cap.png'),
   require('@/assets/images/pipe_body.png'),
   BACKGROUND_IMG,
@@ -381,7 +381,7 @@ export default function FlappyScreen() {
           
           {/* Bird */}
           <Image
-            source={require('../../assets/images/bird_teste2.png')}
+            source={require('../../assets/images/bird_teste3.png')}
             style={[
               styles.bird, 
               { 
