@@ -42,11 +42,18 @@ export default function SocialScreen() {
       const res = await fetch(`${BASE_URL}/posts`, { 
           headers: { Authorization: `Bearer ${token}` } 
       });
-      const data = await res.json();
-      if (data.success) {
-          setPosts(data.posts.map((p: any) => ({ ...p, newComment: '' })));
+      const text = await res.text();
+      try {
+          const data = JSON.parse(text);
+          if (data.success) {
+              setPosts(data.posts.map((p: any) => ({ ...p, newComment: '' })));
+          }
+      } catch (e) {
+          console.log(`Erro 404: A rota GET /posts não existe no backend. Status: ${res.status}`);
       }
-    } catch (err) { console.error(err); }
+    } catch (err) { 
+        console.log("Erro de rede ao carregar posts:", err);
+    }
   };
 
   const getAvatar = (url: string | null, name: string) => {
@@ -68,28 +75,45 @@ export default function SocialScreen() {
       const token = await SecureStore.getItemAsync('token');
       const formData = new FormData();
       
-      // @ts-ignore
+      const asset = result.assets[0];
+      const localUri = asset.uri;
+      const filename = asset.fileName || localUri.split('/').pop() || 'post.jpg';
+      const type = asset.mimeType || 'image/jpeg';
+
       formData.append('image', { 
-          uri: result.assets[0].uri, 
-          type: 'image/jpeg', 
-          name: 'post.jpg' 
-      });
+          uri: Platform.OS === 'ios' ? localUri.replace('file://', '') : localUri,
+          type: type, 
+          name: filename 
+      } as any);
 
       try {
         const res = await fetch(`${BASE_URL}/posts`, { 
             method: 'POST', 
-            headers: { Authorization: `Bearer ${token}` }, 
+            headers: { 
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'multipart/form-data'
+            }, 
             body: formData 
         });
-        const data = await res.json();
+        
+        const textResponse = await res.text();
+        let data;
+
+        try {
+            data = JSON.parse(textResponse);
+        } catch (e) {
+            throw new Error(`Status ${res.status}: Servidor não encontrou a rota de upload POST /posts.`);
+        }
+
         if (data.success) {
             Alert.alert("Sucesso", "Foto publicada!");
             loadPosts();
         } else {
             Alert.alert("Erro", data.error || "Falha no servidor");
         }
-      } catch (err) { 
-          Alert.alert("Erro", "Falha no upload"); 
+      } catch (err: any) { 
+          console.log(err);
+          Alert.alert("Erro de API", err.message || "Falha no upload"); 
       } finally { 
           setUploading(false); 
       }

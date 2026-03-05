@@ -27,9 +27,17 @@ const CAP_HEIGHT = capSource.height * PIPE_SCALE;
 
 const OBSTACLE_GAP = 165;
 const OBSTACLE_SPEED = 2.28;
-const OBSTACLE_SPACING = width * 0.73;
+const OBSTACLE_SPACING = width * 0.68;
 const GRAVITY = 0.25;
 const JUMP_VELOCITY = -5.9;
+
+const RESET_COLORS = {
+  primary: '#fd151b',    // Vermelho
+  secondary: '#ffb30f',  // Amarelo
+  typography: '#1e3572', // Azul Escuro
+  whiteAlt: '#edeff1',   // Branco Sujo
+  blackAlt: '#0d160b'    // Preto Sujo
+};
 
 const ASSETS_TO_LOAD = [
   require('../../assets/images/bird_teste2.png'),
@@ -69,6 +77,7 @@ export default function FlappyScreen() {
     birdY: height / 2,
     obstacles: [createObstacle(width, 1)],
     score: 0,
+    birdRotation: 0,
   });
 
   // --- 2. REFS (MEMÓRIA DO JOGO) ---
@@ -78,6 +87,8 @@ export default function FlappyScreen() {
   const score = useRef(0);
   const nextObstacleId = useRef(2);
   const frameId = useRef<number | null>(null);
+  const lastFrameTime = useRef(Date.now());
+  const accumulator = useRef(0);
 
   // --- 3. FUNÇÕES LÓGICAS (DEFINIDAS DENTRO DO COMPONENTE) ---
   
@@ -146,6 +157,7 @@ export default function FlappyScreen() {
       birdY: height / 2,
       obstacles: firstObstacle,
       score: 0,
+      birdRotation: 0,
     });
 
     setGameOver(false);
@@ -184,67 +196,104 @@ export default function FlappyScreen() {
       return;
     }
 
+    const FPS = 60;
+    const TIME_STEP = 1000 / FPS; // 16.66ms cravados
+    
+    // Reseta os relógios sempre que o jogo arranca
+    lastFrameTime.current = Date.now();
+    accumulator.current = 0;
+
     const gameLoop = () => {
+      const now = Date.now();
+      let deltaTime = now - lastFrameTime.current;
+      
+      // Bloqueio de Segurança: Se a app travar (ou for minimizada), impede que o deltaTime seja gigante
+      if (deltaTime > 250) deltaTime = 250; 
+      
+      lastFrameTime.current = now;
+      accumulator.current += deltaTime;
+
       let isGameOver = false;
-
-      // 1. Bird Physics
-      birdVelocity.current += GRAVITY;
-      birdY.current += birdVelocity.current;
-
-      if (birdY.current + BIRD_HEIGHT >= height || birdY.current <= 0) {
-        isGameOver = true;
-      }
-
-      // 2. Obstacles
-      let newObstacles = [];
+      let physicsUpdated = false;
       let newScore = score.current;
+      let newObstacles = obstacles.current;
 
-      for (const obs of obstacles.current) {
-        const newX = obs.x - OBSTACLE_SPEED;
+      // --- O SEGREDO DOS JOGOS: O WHILE LOOP ---
+      // Vai calcular a física o número de vezes necessárias para acompanhar o tempo real
+      while (accumulator.current >= TIME_STEP) {
+        // 1. Bird Physics
+        birdVelocity.current += GRAVITY;
+        birdY.current += birdVelocity.current;
 
-        // Collision
-        const birdLeft = BIRD_X_POSITION;
-        const birdRight = BIRD_X_POSITION + BIRD_WIDTH;
-        const obstacleLeft = newX;
-        const obstacleRight = newX + OBSTACLE_WIDTH;
-        const isCollidingX = birdRight > obstacleLeft && birdLeft < obstacleRight;
-
-        const topObstacleBottom = obs.height;
-        const bottomObstacleTop = obs.height + OBSTACLE_GAP;
-        const isCollidingY = birdY.current < topObstacleBottom || (birdY.current + BIRD_HEIGHT) > bottomObstacleTop;
-
-        if (isCollidingX && isCollidingY) {
+        if (birdY.current + BIRD_HEIGHT >= height || birdY.current <= 0) {
           isGameOver = true;
         }
 
-        // Scoring
-        const obstacleBackEdge = newX + OBSTACLE_WIDTH;
-        const birdCenterX = BIRD_X_POSITION + BIRD_WIDTH / 2;
-        if (obstacleBackEdge < birdCenterX && !obs.passed) {
-          newScore++;
-          obs.passed = true;
+        // 2. Obstacles
+        let tempObstacles = [];
+        for (const obs of newObstacles) {
+          const newX = obs.x - OBSTACLE_SPEED;
+
+          // Colisões
+          const birdLeft = BIRD_X_POSITION + (BIRD_WIDTH * 0.2);
+          const birdRight = BIRD_X_POSITION + BIRD_WIDTH - (BIRD_WIDTH * 0.2);
+          const obstacleLeft = newX;
+          const obstacleRight = newX + OBSTACLE_WIDTH;
+          const isCollidingX = birdRight > obstacleLeft && birdLeft < obstacleRight;
+
+          const topObstacleBottom = obs.height;
+          const bottomObstacleTop = obs.height + OBSTACLE_GAP;
+          const isCollidingY = birdY.current + (BIRD_HEIGHT * 0.25) < topObstacleBottom || (birdY.current + BIRD_HEIGHT) - (BIRD_HEIGHT * 0.25) > bottomObstacleTop;
+
+          if (isCollidingX && isCollidingY) {
+            isGameOver = true;
+          }
+
+          // Pontuação
+          const obstacleBackEdge = newX + OBSTACLE_WIDTH;
+          const birdCenterX = BIRD_X_POSITION + BIRD_WIDTH / 2;
+          if (obstacleBackEdge < birdCenterX && !obs.passed) {
+            newScore++;
+            obs.passed = true;
+          }
+
+          if (newX > -OBSTACLE_WIDTH) {
+            tempObstacles.push({ ...obs, x: newX });
+          }
         }
 
-        if (newX > -OBSTACLE_WIDTH) {
-          newObstacles.push({ ...obs, x: newX });
+        // Add New Obstacle
+        const lastObstacle = tempObstacles[tempObstacles.length - 1];
+        if (lastObstacle && lastObstacle.x < width - OBSTACLE_SPACING) {
+          tempObstacles.push(createObstacle(width, nextObstacleId.current));
+          nextObstacleId.current++;
         }
+
+        newObstacles = tempObstacles;
+        
+        // Remove 16.66ms do acumulador e regista que a física mexeu
+        accumulator.current -= TIME_STEP;
+        physicsUpdated = true;
+
+        if (isGameOver) break; // Sai do while imediatamente se perder
       }
 
-      // Add New Obstacle
-      const lastObstacle = newObstacles[newObstacles.length - 1];
-      if (lastObstacle && lastObstacle.x < width - OBSTACLE_SPACING) {
-        newObstacles.push(createObstacle(width, nextObstacleId.current));
-        nextObstacleId.current++;
+      // --- RENDERIZAÇÃO (O GRANDE TRUQUE DO ANDROID ANTIGO) ---
+      // Só gastamos processamento a "pintar" o ecrã se a física realmente andou para a frente!
+      if (physicsUpdated) {
+        obstacles.current = newObstacles;
+        score.current = newScore;
+
+        let calculatedRotation = birdVelocity.current * 6;
+        calculatedRotation = Math.max(-25, Math.min(90, calculatedRotation));
+
+        setGameState({
+          birdY: birdY.current,
+          obstacles: newObstacles,
+          score: newScore,
+          birdRotation: calculatedRotation,
+        });
       }
-
-      obstacles.current = newObstacles;
-      score.current = newScore;
-
-      setGameState({
-        birdY: birdY.current,
-        obstacles: newObstacles,
-        score: newScore,
-      });
 
       if (isGameOver) {
         setGameOver(true);
@@ -286,33 +335,39 @@ export default function FlappyScreen() {
         resizeMode="cover"
       />
 
-      {/* MENU INICIAL COM TOP 10 */}
+      {/* ========================================== */}
+      {/* MENU INICIAL COM TOP 10 (COM DARK MODE + PALETA RESET) */}
+      {/* ========================================== */}
       {!gameStarted && !gameOver && (
-        <View style={styles.menuContainer}>
+        <View style={[styles.menuContainer, { backgroundColor: themeColors.background }]}>
           <Text style={[styles.leaderboardTitle, { color: themeColors.text }]}>🏆 TOP PLAYERS</Text>
-
+          
           <View style={styles.leaderboardTable}>
-            <View style={[styles.tableRow, { borderBottomWidth: 2, borderBottomColor: themeColors.tint }]}>
-              <Text style={[styles.rankText, { color: themeColors.tint }]}>#</Text>
-              <Text style={[styles.userText, { fontWeight: 'bold' }]}>Utilizador</Text>
-              <Text style={[styles.scoreText, { color: themeColors.tint }]}>Score</Text>
+        {/* Cabeçalho da Tabela - Sublinhado a Azul Escuro */}
+        <View style={[styles.tableRow, { borderBottomWidth: 2, borderBottomColor: RESET_COLORS.typography }]}>
+          <Text style={[styles.rankText, { color: RESET_COLORS.typography }]}>#</Text>
+          <Text style={[styles.userText, { fontWeight: '900', color: RESET_COLORS.typography }]}>Utilizador</Text>
+          <Text style={[styles.scoreText, { color: RESET_COLORS.typography }]}>Score</Text>
+        </View>
+
+        {/* Lista de Jogadores */}
+        {leaderboard.length > 0 ? (
+          leaderboard.map((item, index) => (
+            <View key={index} style={styles.tableRow}>
+              <Text style={[styles.rankText, { color: RESET_COLORS.typography }]}>{index + 1}</Text>
+              <Text style={[styles.userText, { color: RESET_COLORS.typography }]}>{item.username}</Text>
+              {/* O Score continua a Vermelho para dar aquele "Pop" de destaque no meio do Amarelo! */}
+              <Text style={[styles.scoreText, { color: RESET_COLORS.primary }]}>{item.score}</Text>
             </View>
+          ))
+        ) : (
+          <Text style={[styles.loadingText, { color: RESET_COLORS.typography }]}>A carregar ranking...</Text>
+        )}
+      </View>
 
-            {leaderboard.length > 0 ? (
-              leaderboard.map((item, index) => (
-                <View key={index} style={styles.tableRow}>
-                  <Text style={styles.rankText}>{index + 1}</Text>
-                  <Text style={styles.userText}>{item.username}</Text>
-                  <Text style={styles.scoreText}>{item.score}</Text>
-                </View>
-              ))
-            ) : (
-              <Text style={styles.loadingText}>A carregar ranking...</Text>
-            )}
-          </View>
-
-          <TouchableOpacity
-            style={[styles.playButton, { backgroundColor: themeColors.tint }]}
+          {/* BOTÃO DE PLAY (Agora sem o themeColors azul!) */}
+          <TouchableOpacity 
+            style={styles.playButton} 
             onPress={() => setGameStarted(true)}
           >
             <Text style={styles.buttonText}>JOGAR NOVO JOGO</Text>
@@ -327,7 +382,14 @@ export default function FlappyScreen() {
           {/* Bird */}
           <Image
             source={require('../../assets/images/bird_teste2.png')}
-            style={[styles.bird, { top: gameState.birdY }]}
+            style={[
+              styles.bird, 
+              { 
+                top: gameState.birdY,
+                // 👉 O SEGREDO MÁGICO DO TILT AQUI:
+                transform: [{ rotate: `${gameState.birdRotation}deg` }] 
+              }
+            ]}
             resizeMode="contain"
           />
 
@@ -398,12 +460,13 @@ export default function FlappyScreen() {
           {/* Score */}
           <Text style={[styles.score, { color: themeColors.text }]}>Score: {gameState.score}</Text>
 
-          {/* Game Over */}
+          {/* GAME OVER */}
           {gameOver && (
-            <View style={styles.gameOverContainer}>
-              <Text style={[styles.gameOverText, { color: themeColors.text }]}>Game Over</Text>
-              <TouchableOpacity style={[styles.button, { backgroundColor: themeColors.tint }]} onPress={resetGame}>
-                <Text style={styles.buttonText}>Restart</Text>
+            <View style={[styles.gameOverContainer, { backgroundColor: colorScheme === 'dark' ? '#1e1e1e' : 'rgba(255, 255, 255, 0.95)' }]}>
+              <Text style={[styles.gameOverText, { color: themeColors.text }]}>GAME OVER</Text>
+              {/* Botão Restart (Agora sem o themeColors azul!) */}
+              <TouchableOpacity style={styles.button} onPress={resetGame}>
+                <Text style={styles.buttonText}>RESTART</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -413,81 +476,117 @@ export default function FlappyScreen() {
   );
 }
 
-// --- STYLES ---
+// --- STYLES COMPLETOS ---
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  // Estilos do Menu / Leaderboard
+
+  // ==========================================
+  // 1. ESTILOS DO MENU (Com Suporte a Dark Mode)
+  // ==========================================
   menuContainer: {
     position: 'absolute',
     width: '100%',
     height: '100%',
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    zIndex: 20, // Garante que fica acima de tudo
+    zIndex: 20,
   },
   leaderboardTitle: {
     fontSize: 28,
     fontWeight: 'bold',
     marginBottom: 20,
-    textAlign: 'center',
   },
   leaderboardTable: {
     width: '100%',
-    backgroundColor: '#fff',
+    backgroundColor: RESET_COLORS.secondary, // Amarelo!
     borderRadius: 12,
     padding: 15,
     marginBottom: 25,
-    elevation: 5,
+    elevation: 8, // Um pouco mais de sombra para destacar o cartão
     shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
   },
   tableRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    // Azul escuro com 15% de opacidade para as linhas separadoras não ficarem muito agressivas
+    borderBottomColor: 'rgba(30, 53, 114, 0.15)', 
   },
   rankText: { width: 35, fontWeight: 'bold', fontSize: 16 },
   userText: { flex: 1, fontSize: 16 },
   scoreText: { fontWeight: 'bold', fontSize: 16 },
-  loadingText: { textAlign: 'center', padding: 20, color: '#888' },
+  loadingText: { textAlign: 'center', padding: 20 },
+  
   playButton: {
-    paddingVertical: 15,
+    backgroundColor: RESET_COLORS.secondary, // Amarelo
+    paddingVertical: 18,
     paddingHorizontal: 40,
     borderRadius: 30,
-    elevation: 3,
+    elevation: 5,
+    shadowColor: RESET_COLORS.secondary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 5,
   },
-  // Estilos do Jogo
+  button: { // Botão do Game Over
+    backgroundColor: RESET_COLORS.secondary, // Amarelo
+    paddingVertical: 15, 
+    paddingHorizontal: 40,
+    borderRadius: 30, 
+    elevation: 5,
+    shadowColor: RESET_COLORS.secondary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 5,
+  },
+  buttonText: { 
+    color: RESET_COLORS.typography, // Azul Escuro para contraste perfeito no amarelo!
+    fontSize: 18, 
+    fontWeight: '900', // Fonte super grossa para impacto
+    letterSpacing: 1.5,
+    textAlign: 'center'
+  },
+
+  // ==========================================
+  // 2. ESTILOS DO JOGO (Não mexer para não quebrar a física)
+  // ==========================================
   titleContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   title: { fontSize: 32, fontWeight: 'bold', marginBottom: 20 },
-  button: { padding: 15, borderRadius: 8 },
-  buttonText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
+  //button: { padding: 15, borderRadius: 8 },
   gameArea: { flex: 1 },
-  bird: {
-    position: 'absolute',
-    left: BIRD_X_POSITION,
-    width: BIRD_WIDTH,
+  
+  bird: { 
+    position: 'absolute', 
+    left: BIRD_X_POSITION, 
+    width: BIRD_WIDTH, 
     height: BIRD_HEIGHT,
   },
-  score: {
-    position: 'absolute',
-    top: 50,
-    alignSelf: 'center',
-    fontSize: 40, // Aumentei um pouco para destaque
+  obstacle: { 
+    position: 'absolute', 
+    width: OBSTACLE_WIDTH 
+  },
+  
+  score: { 
+    position: 'absolute', 
+    top: 50, 
+    alignSelf: 'center', 
+    fontSize: 40, 
     fontWeight: 'bold',
+    color: '#fff', // Branco com sombra para ler em qualquer fundo
     textShadowColor: 'rgba(0, 0, 0, 0.5)',
     textShadowOffset: { width: 2, height: 2 },
     textShadowRadius: 3,
-    zIndex: 100
+    zIndex: 100,
   },
-  gameOverContainer: {
-    position: 'absolute',
+  
+  gameOverContainer: { 
+    position: 'absolute', 
     top: height / 2 - 100,
-    alignSelf: 'center',
+    alignSelf: 'center', 
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
     padding: 30,
@@ -495,11 +594,10 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#ddd',
     zIndex: 100,
-    elevation: 10
   },
-  gameOverText: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    marginBottom: 20
+  gameOverText: { 
+    fontSize: 32, 
+    fontWeight: 'bold', 
+    marginBottom: 20 
   },
 });

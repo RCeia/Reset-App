@@ -8,7 +8,8 @@ import {
   Image,
   Alert,
   Platform,
-  Dimensions
+  Dimensions,
+  Modal // <--- ADICIONADO
 } from 'react-native';
 
 // Importações para PDF
@@ -27,8 +28,25 @@ const RESET_COLORS = {
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
+// --- LISTA DE PERGUNTAS FREQUENTES (Podes atualizar aqui!) ---
+const FAQ_DATA = [
+  {
+    question: "O que é o Case Study?",
+    answer: "É um desafio onde deves analisar um cenário real e apresentar uma solução estratégica detalhada."
+  },
+  {
+    question: "Como submeto o meu projeto?",
+    answer: "As submissões devem ser feitas através da plataforma oficial até à data limite indicada no guião."
+  },
+  {
+    question: "Posso participar em equipa?",
+    answer: "Sim, podes formar equipas de até 4 elementos. Certifica-te que todos estão registados."
+  }
+];
+
 export default function HomeScreen() {
   const [pdfUri, setPdfUri] = useState<string | null>(null);
+  const [faqVisible, setFaqVisible] = useState(false); // <--- ESTADO DO MODAL DE FAQ
 
   // Carregar o PDF "Default" (Survival Guide) ao iniciar
   useEffect(() => {
@@ -87,10 +105,19 @@ export default function HomeScreen() {
         resizeMode="contain"
       />
 
-      {/* TÍTULO DA SECÇÃO */}
-      <View style={styles.headerContainer}>
-        <Text style={styles.mainTitle}>OS DESAFIOS</Text>
-        <View style={styles.underline} />
+      {/* TÍTULO DA SECÇÃO + BOTÃO FAQ */}
+      <View style={styles.headerRow}>
+        <View>
+          <Text style={styles.mainTitle}>OS DESAFIOS</Text>
+          <View style={styles.underline} />
+        </View>
+        
+        <TouchableOpacity 
+          style={styles.faqButton} 
+          onPress={() => setFaqVisible(true)}
+        >
+          <Text style={styles.faqButtonText}>FAQ</Text>
+        </TouchableOpacity>
       </View>
 
       {/* 2. CARTÃO: CASE STUDY */}
@@ -138,6 +165,31 @@ export default function HomeScreen() {
       {/* Espaço extra no fundo */}
       <View style={{ height: 40 }} />
 
+      {/* --- MODAL DO FAQ --- */}
+      <Modal visible={faqVisible} animationType="fade" transparent={true}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Perguntas Frequentes</Text>
+              <TouchableOpacity onPress={() => setFaqVisible(false)} style={styles.closeButton}>
+                <Text style={styles.closeButtonText}>X</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.faqScroll}>
+              {FAQ_DATA.map((item, index) => (
+                <View key={index} style={styles.faqItem}>
+                  <Text style={styles.faqQuestion}>{item.question}</Text>
+                  <Text style={styles.faqAnswer}>{item.answer}</Text>
+                </View>
+              ))}
+            </ScrollView>
+
+          </View>
+        </View>
+      </Modal>
+
     </ScrollView>
   );
 }
@@ -160,9 +212,12 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
 
-  // --- TÍTULO ---
-  headerContainer: {
+  // --- CABEÇALHO (NOVO LAYOUT COM BOTÃO) ---
+  headerRow: {
     width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
     marginBottom: 25,
   },
   mainTitle: {
@@ -177,6 +232,19 @@ const styles = StyleSheet.create({
     height: 4,
     backgroundColor: RESET_COLORS.typography, // Azul
     marginTop: 5,
+  },
+  faqButton: {
+    backgroundColor: RESET_COLORS.typography,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    marginTop: 2,
+  },
+  faqButtonText: {
+    color: '#FFF',
+    fontFamily: 'Archivo-SemiBold',
+    fontWeight: 'bold',
+    fontSize: 12,
   },
 
   // --- CARTÕES DE DESAFIO ---
@@ -239,5 +307,63 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 14,
     letterSpacing: 0.5,
+  },
+
+  // --- ESTILOS DO MODAL FAQ ---
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(30, 53, 114, 0.85)', // Fundo azul escuro translúcido
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    width: '100%',
+    maxHeight: '80%',
+    backgroundColor: RESET_COLORS.whiteAlt,
+    borderRadius: 12,
+    padding: 20,
+    elevation: 10,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ccc',
+    paddingBottom: 10,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontFamily: 'Archivo-Black',
+    color: RESET_COLORS.primary,
+  },
+  closeButton: {
+    padding: 5,
+  },
+  closeButtonText: {
+    fontSize: 18,
+    fontFamily: 'Archivo-Black',
+    color: RESET_COLORS.typography,
+  },
+  faqScroll: {
+    paddingBottom: 10,
+  },
+  faqItem: {
+    marginBottom: 15,
+  },
+  faqQuestion: {
+    fontSize: 16,
+    fontFamily: 'Archivo-SemiBold',
+    color: RESET_COLORS.typography,
+    fontWeight: 'bold',
+    marginBottom: 5,
+  },
+  faqAnswer: {
+    fontSize: 14,
+    fontFamily: 'NotoSans-Light',
+    color: '#333',
+    lineHeight: 20,
   },
 });

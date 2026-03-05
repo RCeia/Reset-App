@@ -10,7 +10,7 @@ mongoose.connect(MONGO_URI)
 
     // 👇 IMPORTANTE: Coloca aqui o email exato com que te registaste na App
     // (Podes ver no MongoDB Compass se não tiveres a certeza)
-    const emailAlvo = '11'; 
+    const emailAlvo = 'rodrigoceia7337@gmail.com'; 
 
     // 1. Tenta promover a Admin
     const user = await User.findOneAndUpdate(

@@ -7,6 +7,7 @@ const path = require('path');
 const fs = require('fs');
 const nodemailer = require('nodemailer'); // <--- NOVO IMPORT
 const User = require('../models/User');
+const Tag = require('../models/Tag');
 const authenticate = require('../middleware/auth');
 
 // ==========================================================
@@ -52,7 +53,13 @@ router.post('/register', async (req, res) => {
     }
 
     const hashed = await bcrypt.hash(password, 10);
-    const user = new User({ email, password: hashed, username });
+    const tagGeral = await Tag.findOne({ name: 'Geral' });
+    const user = new User({ 
+      email, 
+      password: hashed, 
+      username,
+      tags: tagGeral ? [tagGeral._id] : []
+    });
     await user.save();
     res.json({ success: true, userId: user._id });
   } catch (err) {
