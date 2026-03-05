@@ -1,25 +1,26 @@
 const express = require('express');
 const router = express.Router();
 const path = require('path');
-const fs = require('fs');
 const Post = require('../models/Post');
 const authenticate = require('../middleware/auth');
 const multer = require('multer');
+const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadDir = 'uploads/';
-    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    let ext = path.extname(file.originalname);
-    if (!ext) {
-      if (file.mimetype === 'image/jpeg' || file.mimetype === 'image/jpg') ext = '.jpg';
-      else if (file.mimetype === 'image/png') ext = '.png';
-      else ext = '.jpg'; 
-    }
-    cb(null, `${req.userId || 'post'}-${Date.now()}${ext}`);
+// 1. Configuração do Cloudinary (usando os teus dados)
+cloudinary.config({
+  cloud_name: 'dwokngz0j',
+  api_key: '628528295897577',
+  api_secret: 'zG_xKM3E-v021N4a58Yisyefu9s'
+});
+
+// 2. Configuração do Storage do Cloudinary
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'reset_app_posts',
+    format: async (req, file) => 'jpg', 
+    public_id: (req, file) => `post-${Date.now()}`,
   },
 });
 
@@ -34,7 +35,8 @@ router.get('/', authenticate, async (req, res) => {
             .lean();
 
         const mapped = posts.map(p => {
-            const getUrl = (s) => s ? `${req.protocol}://${req.get('host')}/uploads/${path.basename(s)}` : '';
+            // Agora o p.imagePath já é o URL completo do Cloudinary
+            const getUrl = (s) => s || ''; 
 
             return {
                 id: p._id,
@@ -64,7 +66,7 @@ router.post('/', authenticate, upload.single('image'), async (req, res) => {
 
         const newPost = new Post({
             author: req.userId,
-            imagePath: req.file.path,
+            imagePath: req.file.path, // O Multer-Storage-Cloudinary coloca o URL aqui
             likes: [],
             comments: []
         });
@@ -75,7 +77,7 @@ router.post('/', authenticate, upload.single('image'), async (req, res) => {
             .populate('author', 'username avatar')
             .lean();
 
-        const getUrl = (s) => s ? `${req.protocol}://${req.get('host')}/uploads/${path.basename(s)}` : '';
+        const getUrl = (s) => s || '';
 
         const mappedPost = {
             id: populatedPost._id,
