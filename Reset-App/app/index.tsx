@@ -38,8 +38,11 @@ export default function RegisterScreen() {
         body: JSON.stringify({ username, email, password }),
       });
 
+      const data = await res.json(); // Tenta ler a resposta do servidor
+
       if (!res.ok) {
-        Alert.alert('Erro no Registo');
+        // Mostra o erro específico (ex: "Email já registado")
+        Alert.alert('Erro no Registo', data.error || 'Erro desconhecido');
         setLoading(false);
         return;
       }
@@ -47,7 +50,7 @@ export default function RegisterScreen() {
       Alert.alert('Sucesso', 'Conta criada! Por favor faça login.');
       router.push('/login');
     } catch (err) {
-      Alert.alert('Erro', 'Não foi possível conectar ao servidor');
+      Alert.alert('Erro', 'Não foi possível conectar ao servidor. Verifica se o link do Render está correto.');
       setLoading(false);
     }
   };

@@ -1,8 +1,8 @@
 import { Platform } from 'react-native';
 
-const SERVER_IP = '194.210.174.109'; // O teu IP atual
-const PORT = '3000';
+// O link oficial que aparece no teu log do Render
+const PUBLIC_URL = 'https://reset-app-7vn7.onrender.com';
 
 export const BASE_URL = Platform.OS === 'web'
-  ? `http://localhost:${PORT}`       // Se for Web, usa localhost
-  : `http://${SERVER_IP}:${PORT}`;   // Se for Android/iOS, usa o IP da rede
+  ? 'http://localhost:3000'
+  : PUBLIC_URL;
