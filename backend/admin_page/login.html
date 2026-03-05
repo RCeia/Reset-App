@@ -44,27 +44,26 @@
 <script>
     async function fazerLogin(event) {
         event.preventDefault(); 
-        console.log("Botão clicado! A iniciar processo..."); // 🔍 DEBUG
+        console.log("Botão clicado! A iniciar processo..."); 
 
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
         const alertBox = document.getElementById('errorAlert');
 
-        // Limpa erros anteriores
         alertBox.classList.add('d-none');
 
-        console.log("Tentando login com:", email); // 🔍 DEBUG
+        console.log("Tentando login com:", email);
 
         try {
-            // 🚨 CORREÇÃO IMPORTANTE: Mudei para porta 3000
-            const res = await fetch('http://localhost:3000/admin/login', {
+            // URL ATUALIZADO PARA O RENDER
+            const res = await fetch('https://reset-app-7vn7.onrender.com/admin/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password })
             });
 
             const data = await res.json();
-            console.log("Resposta do servidor:", data); // 🔍 DEBUG
+            console.log("Resposta do servidor:", data);
 
             if (data.success) {
                 console.log("Login Sucesso! Redirecionando...");
@@ -76,8 +75,8 @@
                 alertBox.classList.remove('d-none');
             }
         } catch (err) {
-            console.error("Erro no Fetch:", err); // 🔍 DEBUG
-            alertBox.innerText = 'Erro: O servidor parece desligado ou porta errada.';
+            console.error("Erro no Fetch:", err);
+            alertBox.innerText = 'Erro: Não foi possível ligar ao servidor no Render.';
             alertBox.classList.remove('d-none');
         }
     }

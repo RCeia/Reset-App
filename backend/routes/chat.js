@@ -66,8 +66,7 @@ router.get('/', authenticate, async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
-
-// 2. Carregar Histórico (COM A LÓGICA DE URL)
+// 2. Carregar Histórico (CORRIGIDO PARA CLOUDINARY)
 router.get('/:id/messages', authenticate, async (req, res) => {
     try {
         const messages = await Message.find({ chat: req.params.id })
@@ -75,17 +74,9 @@ router.get('/:id/messages', authenticate, async (req, res) => {
             .populate('sender', 'username avatar')
             .lean();
 
-        // Transforma caminhos de ficheiro em Links URL
-        const messagesWithUrl = messages.map(msg => {
-            if (msg.sender && msg.sender.avatar) {
-                const filename = path.basename(msg.sender.avatar);
-                // Constrói o link completo
-                msg.sender.avatar = `${req.protocol}://${req.get('host')}/uploads/${filename}`;
-            }
-            return msg;
-        });
-            
-        res.json({ success: true, messages: messagesWithUrl });
+        // Removemos a lógica de path.basename e /uploads/
+        // O Cloudinary já envia o link completo, por isso basta enviar as mensagens como estão
+        res.json({ success: true, messages });
     } catch (err) { 
         res.status(500).json({ error: err.message }); 
     }
