@@ -4,13 +4,13 @@ import { useRouter } from 'expo-router';
 import { AuthContext } from '@/app/context/AuthContext';
 import { BASE_URL } from '@/constants/Config';
 
-// Cores Oficiais Reset [cite: 17, 18, 19]
+// Cores Oficiais Reset
 const RESET_COLORS = {
-  primary: '#fd151b',    // Cor principal [cite: 17]
-  secondary: '#ffb30f',  // Cor secundária [cite: 18]
-  typography: '#1e3572', // Cor principal para tipografia [cite: 19]
-  blackAlt: '#0d160b',   // Alternativa de preto [cite: 20]
-  whiteAlt: '#edeff1',   // Alternativa de branco [cite: 21]
+  primary: '#fd151b',    // Cor principal
+  secondary: '#ffb30f',  // Cor secundária
+  typography: '#1e3572', // Cor principal para tipografia
+  blackAlt: '#0d160b',   // Alternativa de preto
+  whiteAlt: '#edeff1',   // Alternativa de branco
 };
 
 export default function LoginScreen() {
@@ -27,20 +27,32 @@ export default function LoginScreen() {
       return;
     }
 
-    setLoading(true); // Ativa o estado de carregamento
+    setLoading(true);
 
     try {
+      console.log("A tentar ligar a:", `${BASE_URL}/login`);
+
       const res = await fetch(`${BASE_URL}/login`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'ngrok-skip-browser-warning': 'true',
+          'User-Agent': 'PostmanRuntime/7.28.4' // Esta é a chave mestra para o Ngrok ignorar a segurança
+        },
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await res.json();
+      // Lemos a resposta como texto puro em vez de JSON para ver o erro HTML
+      const rawText = await res.text();
+      console.log("RESPOSTA RAW DO SERVIDOR:", rawText.substring(0, 300));
+
+      // Tentamos converter para JSON
+      const data = JSON.parse(rawText);
 
       if (!res.ok) {
         Alert.alert('Erro', data.error || 'Credenciais inválidas');
-        setLoading(false); // Desativa se houver erro
+        setLoading(false);
         return;
       }
 
@@ -48,15 +60,14 @@ export default function LoginScreen() {
       router.replace('/(tabs)/messages');
 
     } catch (err) {
-      console.error("Erro no fetch:", err);
+      console.error("ERRO COMPLETO:", err);
       Alert.alert('Erro', 'Não foi possível conectar ao servidor.');
-      setLoading(false); // Desativa se houver erro de rede
+      setLoading(false);
     }
   };
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      {/* Logótipo - Versão Estendida [cite: 8] */}
       <Image 
         source={require('@/assets/images/reset-logo-extended.png')} 
         style={styles.logo}
@@ -87,7 +98,7 @@ export default function LoginScreen() {
       <TouchableOpacity 
         style={[styles.button, { backgroundColor: loading ? '#ccc' : RESET_COLORS.typography }]} 
         onPress={handleLogin}
-        disabled={loading} // Impede múltiplos cliques enquanto carrega
+        disabled={loading}
       >
         {loading ? (
           <ActivityIndicator color="#FFF" />
@@ -109,7 +120,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center', 
     alignItems: 'center', 
     padding: 20, 
-    backgroundColor: RESET_COLORS.secondary // Fundo Amarelo (Combinação nº1) [cite: 23]
+    backgroundColor: RESET_COLORS.secondary 
   },
   logo: {
     width: 220,
@@ -118,9 +129,9 @@ const styles = StyleSheet.create({
   },
   title: { 
     fontSize: 24, 
-    fontFamily: 'Archivo-Black', // Tipografia oficial para títulos [cite: 51]
+    fontFamily: 'Archivo-Black', 
     fontWeight: 'bold',
-    color: RESET_COLORS.primary, // Vermelho sobre Amarelo [cite: 23]
+    color: RESET_COLORS.primary, 
     marginBottom: 30,
     textTransform: 'uppercase',
     letterSpacing: 2,
@@ -129,10 +140,10 @@ const styles = StyleSheet.create({
     borderWidth: 1, 
     width: '100%', 
     padding: 15, 
-    borderRadius: 4, // Design simples [cite: 6]
+    borderRadius: 4, 
     marginBottom: 15, 
     fontSize: 16,
-    fontFamily: 'NotoSans-Light', // Tipografia para corpo de texto [cite: 52]
+    fontFamily: 'NotoSans-Light', 
     borderColor: RESET_COLORS.typography,
     backgroundColor: 'rgba(255, 255, 255, 0.9)'
   },
@@ -146,7 +157,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: '#FFF',
-    fontFamily: 'Archivo-SemiBold', // Tipografia oficial [cite: 51]
+    fontFamily: 'Archivo-SemiBold', 
     fontWeight: 'bold',
     letterSpacing: 1
   },

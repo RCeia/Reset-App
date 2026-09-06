@@ -1,0 +1,49 @@
+services:
+  mongodb:
+    image: mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+      
+  backend:
+    build: ./backend
+    ports:
+      - "3000:3000"
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/reset_app
+      - PORT=3000
+      - PUBLIC_URL=https://ended-enable-frostlike.ngrok-free.dev
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      - mongodb
+      
+  backend-tunnel:
+    image: ngrok/ngrok:latest
+    command: http backend:3000 --domain=ended-enable-frostlike.ngrok-free.dev
+    environment:
+      - NGROK_AUTHTOKEN=3H9BR00f2nvs9OERGMDUa86ZQVs_66X8T22T2uGzcs8DJzoRE
+    depends_on:
+      - backend
+      
+  frontend:
+    build: ./Reset-App
+    ports:
+      - "8081:8081"
+    environment:
+      - NODE_OPTIONS=--dns-result-order=ipv4first
+      - EXPO_NGROK_AUTHTOKEN=36iMU8K8vcQJAzum0f179CYgU7x_6AjFGNMbZRPLPQwzpXwNr
+      - NGROK_AUTHTOKEN=36iMU8K8vcQJAzum0f179CYgU7x_6AjFGNMbZRPLPQwzpXwNr
+    volumes:
+      - ./Reset-App:/app
+      - /app/node_modules
+    stdin_open: true
+    tty: true
+    command: npx expo start --tunnel
+    depends_on:
+      - backend
+      
+volumes:
+  mongo_data:

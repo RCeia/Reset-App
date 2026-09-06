@@ -103,3 +103,5 @@ npx expo start --tunnel
 
 Encontrar o ip
 ip config (no cmd)
+
+docker compose down ; docker compose up -d ; docker compose logs -f frontend

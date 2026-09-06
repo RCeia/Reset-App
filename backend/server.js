@@ -3,7 +3,6 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
 const http = require('http');
-const fs = require('fs'); 
 const { Server } = require('socket.io');
 
 // Importar Rotas e Modelos
@@ -11,36 +10,23 @@ const adminRoutes = require('./routes/admin');
 const postRoutes = require('./routes/posts');
 const chatRoutes = require('./routes/chat');
 const authRoutes = require('./routes/auth'); 
+const scoreRoutes = require('./routes/score'); // 🆕 Adicionado da versão nova
 const { Message } = require('./models/Chat'); 
 
 // ==========================================================
-// 1. CONFIGURAÇÃO DE IP (Sincronização com o Frontend)
+// 1. CONFIGURAÇÕES BASE (Variáveis do Docker)
 // ==========================================================
-let SERVER_IP = '127.0.0.1'; 
-const PORT = 3001;
-
-try {
-  // Tenta ler o IP do ficheiro de configuração do Frontend
-  const configPath = path.join(__dirname, '../Reset-App/constants/Config.ts');
-  
-  if (fs.existsSync(configPath)) {
-    const fileContent = fs.readFileSync(configPath, 'utf8');
-    const match = fileContent.match(/SERVER_IP\s*=\s*["']([^"']+)["']/);
-    if (match && match[1]) {
-      SERVER_IP = match[1];
-      console.log(`✅ IP sincronizado com Config.ts: ${SERVER_IP}`);
-    }
-  }
-} catch (error) { 
-    console.log('⚠️ Não consegui ler o Config.ts, usando localhost'); 
-}
+// Mantivemos a estrutura do Docker para o Ngrok e MongoDB funcionarem!
+const PORT = process.env.PORT || 3000;
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/myappdb';
+const PUBLIC_URL = process.env.PUBLIC_URL || `http://localhost:${PORT}`;
 
 // ==========================================================
-// 2. CONEXÃO MONGODB (Versão Limpa sem Warnings)
+// 2. CONEXÃO MONGODB
 // ==========================================================
-mongoose.connect('mongodb://127.0.0.1:27017/myappdb')
-.then(() => console.log('📦 MongoDB LOCAL Conectado com sucesso!'))
-.catch(err => console.error('❌ Erro ao ligar ao Mongo LOCAL:', err));
+mongoose.connect(MONGO_URI)
+.then(() => console.log('📦 MongoDB Conectado com sucesso!'))
+.catch(err => console.error('❌ Erro ao ligar ao Mongo:', err));
 
 // ==========================================================
 // 3. CONFIGURAÇÃO DO EXPRESS E SOCKET.IO
@@ -62,6 +48,7 @@ app.use('/', authRoutes);
 app.use('/admin', adminRoutes);
 app.use('/posts', postRoutes);
 app.use('/chats', chatRoutes);
+app.use('/api/score', scoreRoutes); // 🆕 Adicionado da versão nova
 
 // ================= SOCKET (TEMPO REAL) =================
 io.on('connection', (socket) => {
@@ -84,7 +71,8 @@ io.on('connection', (socket) => {
             let avatarUrl = '';
             if (populated.sender && populated.sender.avatar) {
                 const filename = path.basename(populated.sender.avatar);
-                avatarUrl = `http://${SERVER_IP}:${PORT}/uploads/${filename}`;
+                // Mantemos o PUBLIC_URL (Ngrok) para funcionar via Internet
+                avatarUrl = `${PUBLIC_URL}/uploads/${filename}`;
             }
 
             // 4. Enviar para o Frontend
@@ -111,16 +99,16 @@ io.on('connection', (socket) => {
 // ==========================================================
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`\n🚀 SERVIDOR ONLINE`);
-    console.log(`🔗 Local: http://localhost:${PORT}`);
-    console.log(`🔗 Rede:  http://${SERVER_IP}:${PORT}`);
+    console.log(`🔗 Porta Interna: ${PORT}`);
+    console.log(`🔗 Acesso Público (Ngrok): ${PUBLIC_URL}`);
     console.log(`------------------------------------------\n`);
 });
 
-// Captura erro se o porto estiver ocupado
+// 🆕 Captura erro se o porto estiver ocupado (Da versão nova)
 server.on('error', (err) => {
     if (err.code === 'EADDRINUSE') {
         console.error(`\n❌ ERRO: O porto ${PORT} já está a ser usado!`);
-        console.log('💡 RESOLUÇÃO: Executa "taskkill.exe /F /IM node.exe" no teu terminal.\n');
+        console.log('💡 DICA: Como estás no Docker, usa o comando "docker compose restart backend" no terminal.\n');
         process.exit(1);
     }
 });
