@@ -34,6 +34,7 @@ services:
       - "8081:8081"
     environment:
       - NODE_OPTIONS=--dns-result-order=ipv4first
+      - EXPO_PUBLIC_USE_RN_FETCH=1
       - EXPO_NGROK_AUTHTOKEN=36iMU8K8vcQJAzum0f179CYgU7x_6AjFGNMbZRPLPQwzpXwNr
       - NGROK_AUTHTOKEN=36iMU8K8vcQJAzum0f179CYgU7x_6AjFGNMbZRPLPQwzpXwNr
     volumes:
@@ -41,7 +42,7 @@ services:
       - /app/node_modules
     stdin_open: true
     tty: true
-    command: npx expo start --tunnel
+    command: npx expo start --tunnel ngrok
     depends_on:
       - backend
       
